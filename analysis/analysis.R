@@ -235,6 +235,10 @@ for(task in 1:nrow(Tasks)) {
     'FWHM','u_FWHM',
     'Area','u_Area'
   )
+  xic = cbind(time,rev(CV))
+  colnames(xic) = c('time','CV')
+  xfi = cbind(time,rev(CV))
+  colnames(xfi) = c('time','CV')
 
   # Loop over targets ####
   for(it in 1:nrow(targets)) {
@@ -268,7 +272,7 @@ for(task in 1:nrow(Tasks)) {
         mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
         start = c(
           mu    = CVf[which.max(mMS)],
-          sigma = 1,
+          sigma = 0.7,
           k     = max(mMS)
         )
       ),
@@ -284,9 +288,9 @@ for(task in 1:nrow(Tasks)) {
     # Transform params to quantities of interest
     mu     = v[1]
     u_mu   = u_v[1]
-    fwhm   = 2.355 * v[2]
+    fwhm   = 2.355 * abs(v[2])
     u_fwhm = 2.355 * u_v[2]
-    area   = sqrt(2*pi) * v[2] * v[3]
+    area   = sqrt(2*pi) * abs(v[2]) * v[3]
     u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
 
     # Quality control
@@ -331,9 +335,10 @@ for(task in 1:nrow(Tasks)) {
         mex = targets[it,'m/z_exact'],
         leg = targets[it,'Name'],
         res = paste0(
-          'CV = ', resu[it,5],
-          '\n FWHM = ',resu[it,6],
-          '\n Area = ',resu[it,7]),
+          'CV = ',      signif(mu,4),
+          '\n FWHM = ', signif(fwhm,3),
+          '\n Area = ', signif(area,3)
+        ),
         mzlim = c(mz1,mz2),
         CVlim = range(CV),
         gPars = gPars
@@ -342,21 +347,15 @@ for(task in 1:nrow(Tasks)) {
     }
 
     # Save XIC file
-    xic = cbind(time,rev(CV),rev(mMStot))
-    colnames(xic) = c('time','CV',targets[it,1])
-    write.csv(
-      xic,
-      file = paste0(tabRepo, tag, '_XIC_', targets[it,1], '.csv')
-    )
+    nam0 = colnames(xic)
+    xic = cbind(xic,rev(mMStot))
+    colnames(xic) = c(nam0,targets[it,1])
 
     # Save Fit file
-    fit = peak_shape(CVf,v)
-    xic = cbind(CVf,mMS,fit)
-    colnames(xic) = c('CV',targets[it,1],'Fit')
-    write.csv(
-      xic,
-      file = paste0(tabRepo, tag, '_FIT_', targets[it,1], '.csv')
-    )
+    fit = peak_shape(CV,v)
+    nam0 = colnames(xfi)
+    xfi = cbind(xfi,rev(fit))
+    colnames(xfi) = c(nam0,targets[it,1])
 
   }
 
@@ -364,6 +363,11 @@ for(task in 1:nrow(Tasks)) {
   print(resu)
   # Save results
   write.csv(resu,file = paste0(tabRepo,tag,'_results.csv'))
+
+  write.csv(xic,file = paste0(tabRepo, tag, '_XIC.csv'))
+
+  write.csv(xfi,file = paste0(tabRepo, tag, '_fit.csv'))
+
 }
 
 # END ####
