@@ -32,7 +32,7 @@ gPars = list(
   cols_tr  = rev(inlmisc::GetColors(8, alpha = 0.2))[1:7],
   cols_tr2 = rev(inlmisc::GetColors(8, alpha = 0.5))[1:7],
   pty      = 's',
-  mar      = c(3,3,1.6,.2),
+  mar      = c(3,3,1.6,.5),
   mgp      = c(2,.75,0),
   tcl      = -0.5,
   lwd      = 4.0,
@@ -105,6 +105,8 @@ plotPeak = function(
     abline(h=mex,lty=1,col=cols[2])
 
   ## 2. CV profile
+  xmod = seq(min(CVf),max(CVf),length.out = 1000)
+  vmod = model(xmod,vg)
   plot(
     CVf,
     mMS,
@@ -112,12 +114,11 @@ plotPeak = function(
     col  = cols[4],
     xlim = CVlim,
     xlab = 'CV',
+    ylim = range(c(mMS,vmod)),
     ylab = 'a.u.',
     main = 'Mean CV profile'
   )
   ## 2.1 Gaussian fit
-  xmod = seq(min(CVf),max(CVf),length.out = 1000)
-  vmod = model(xmod,vg)
   lines(xmod,vmod,col = cols[2])
 
   ## Add fit results
