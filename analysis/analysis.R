@@ -1,6 +1,6 @@
 # User configuration params ####
 taskTable = 'pm.csv'
-tgTable = 'targets.txt'
+tgTable = 'targets.csv'
 filter_results = FALSE
 fwhm_min = 0.5
 fwhm_max = 1.5
@@ -201,31 +201,30 @@ for(task in 1:nrow(Tasks)) {
     sep = '\t',
     stringsAsFactors = FALSE
   )
-  CV  = rev(CV0[, 4])
+  CV  = rev(CV0[, 4]) # We want increasing CVs
 
   # tCV = CV0[, 15] / 1000 / 60 # Convertit msec to minutes
   # tCV = rev(tCV - tCV[1])
 
   ## Ensure CV & MS tables conformity
-  t0  = Tasks[task,'t0']
-  it = which.min(abs(time - t0))
+  t0   = Tasks[task,'t0']
+  it   = which.min(abs(time - t0))
   selt = which(time >= time[it])
-  nt = length(selt)
+  nt   = length(selt)
 
-  CV0 = Tasks[task,'CV0']
-  iCV = which.min(abs(CV - CV0))
+  CV0   = Tasks[task,'CV0']
+  iCV   = which.min(abs(CV - CV0))
   selCV = which(CV <= CV[iCV])
-  nCV = length(selCV)
+  nCV   = length(selCV)
 
   ncut  = min(nt,nCV)
   selt  = selt[1:ncut]
   selCV = rev(rev(selCV)[1:ncut])
 
-
   time = time[selt]
-  MS = MS[selt,]
-  CV = CV[selCV]
-  nCV = length(CV)
+  MS   = MS[selt,]
+  CV   = CV[selCV]
+  nCV  = length(CV)
 
   ## Initialize results table
   resu = cbind(targets,empty,empty,empty,empty,empty,empty)
@@ -342,7 +341,7 @@ for(task in 1:nrow(Tasks)) {
     }
 
     # Save XIC file
-    xic = cbind(time,CV,mMStot)
+    xic = cbind(time,rev(CV),rev(mMStot))
     colnames(xic) = c('time','CV',targets[it,1])
     write.csv(
       xic,
