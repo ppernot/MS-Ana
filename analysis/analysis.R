@@ -1,8 +1,13 @@
-# User params ####
+# User configuration params ####
 taskTable = 'pm.csv'
-tgTable   = 'targets.txt'
-dmz       = 0.5 # width of mz window around exact mz for signal averaging
-dCV       = 2 # width of CV window around reference CV for peak fit
+tgTable = 'targets.txt'
+filter_results = FALSE
+fwhm_min = 0.5
+fwhm_max = 1.5
+area_min = 10
+save_figures = TRUE
+dmz = 0.5 # width of mz window around exact mz for signal averaging
+dCV = 2 # width of CV window around reference CV for peak fit
 
 # Code Setup ####
 # Install packages if necessary
@@ -54,11 +59,15 @@ print(sessionInfo(), locale=FALSE)
 sink()
 
 ## Functions
+peak_shape = function(x,p) {
+  p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
+}
 plotPeak = function(
   mz, CV, MS, CVf, mMS, vg,
   mex = NA,
   leg = '',
   res = NA,
+  model = peak_shape,
   mzlim = range(mz),
   CVlim = range(CV),
   gPars
@@ -107,12 +116,11 @@ plotPeak = function(
     main = 'Mean CV profile'
   )
   ## 2.1 Gaussian fit
-  plot(
-    function(x) vg[3]*exp(-1/2*(x-vg[1])^2/vg[2]^2),
-    col = cols[2],
-    add = TRUE,
-    xlim = range(CV)
-  )
+  xmod = seq(min(CVf),max(CVf),length.out = 1000)
+  vmod = model(xmod,vg)
+  lines(xmod,vmod,col = cols[2])
+
+  ## Add fit results
   if (!is.na(res))
     legend(
       'topleft',
@@ -219,7 +227,7 @@ for(task in 1:nrow(Tasks)) {
   CV = CV[selCV]
   nCV = length(CV)
 
-  # Loop over targets ####
+  ## Initialize results table
   resu = cbind(targets,empty,empty,empty,empty,empty,empty)
   colnames(resu) = c(
     colnames(targets),
@@ -227,6 +235,8 @@ for(task in 1:nrow(Tasks)) {
     'FWHM','u_FWHM',
     'Area','u_Area'
   )
+
+  # Loop over targets ####
   for(it in 1:nrow(targets)) {
 
     # Select mz window
@@ -248,8 +258,9 @@ for(task in 1:nrow(Tasks)) {
     }
 
     # Estimate Profile
-    selMz = mz >= mz1 & mz <= mz2 # Select mz area
-    mMS = rowSums(MS[selCV, selMz]) # sum over selected mz
+    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+    mMS    = rowSums(MS[selCV, selMz]) # sum over selected mz
+    mMStot = rowSums(MS[, selMz]) # full CV range for output in XIC file
 
     # Normal fit
     res = try(
@@ -266,29 +277,34 @@ for(task in 1:nrow(Tasks)) {
     if(class(res)=="try-error")
       next # Skip results and figs
 
-    # Get best params and uncert.
+    # Get best params and uncertainty
     v   = summary(res)$parameters[,"Estimate"]   # Best params
     u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
 
-    mu   = v[1]
-    u_mu = u_v[1]
-    fwhm = 2.355 * v[2]
+    # Transform params to quantities of interest
+    mu     = v[1]
+    u_mu   = u_v[1]
+    fwhm   = 2.355 * v[2]
     u_fwhm = 2.355 * u_v[2]
-    area = v[3] *sqrt(2*pi)* v[2]
-    u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2) # CHECK !!!
+    area   = sqrt(2*pi) * v[2] * v[3]
+    u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
 
     # Quality control
-    # if(fwhm <= 0.5 | fwhm >= 1.5)
-    #   next
-    # if(area <= 10)
-    #   next
+    if(
+      filter_results &
+      (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
+    )
+      next # Leave 'it' line of table results with NAs
 
+    # Store in results table
     resu[it,5] = signif(mu,4)
     resu[it,6] = signif(u_mu,2)
     resu[it,7] = signif(fwhm,3)
     resu[it,8] = signif(u_fwhm,2)
     resu[it,9] = signif(area,3)
     resu[it,10] = signif(u_area,2)
+
+    # Plot data and fit results
     plotPeak(
       mz, CV, MS, CVf, mMS,
       vg = v,
@@ -303,31 +319,45 @@ for(task in 1:nrow(Tasks)) {
       CVlim = range(CVf),
       gPars = gParsLoc
     )
-    # Save figure
-    png(
-      filename = paste0(figRepo, tag, '_', targets[it,1], '.png'),
-      width    = 2*gPars$reso,
-      height   =   gPars$reso )
-    plotPeak(
-      mz, CV, MS, CVf, mMS,
-      vg = v,
-      mex = targets[it,'m/z_exact'],
-      leg = targets[it,'Name'],
-      res = paste0(
-        'CV = ', resu[it,5],
-        '\n FWHM = ',resu[it,6],
-        '\n Area = ',resu[it,7]),
-      mzlim = c(mz1,mz2),
-      CVlim = range(CV),
-      gPars = gPars
-    )
-    dev.off()
-    xic = cbind(CVf,mMS)
-    colnames(xic) = c('CV',targets[it,1])
+
+    if(save_figures) {
+      png(
+        filename = paste0(figRepo, tag, '_', targets[it,1], '.png'),
+        width    = 2*gPars$reso,
+        height   =   gPars$reso )
+      plotPeak(
+        mz, CV, MS, CVf, mMS,
+        vg = v,
+        mex = targets[it,'m/z_exact'],
+        leg = targets[it,'Name'],
+        res = paste0(
+          'CV = ', resu[it,5],
+          '\n FWHM = ',resu[it,6],
+          '\n Area = ',resu[it,7]),
+        mzlim = c(mz1,mz2),
+        CVlim = range(CV),
+        gPars = gPars
+      )
+      dev.off()
+    }
+
+    # Save XIC file
+    xic = cbind(time,CV,mMStot)
+    colnames(xic) = c('time','CV',targets[it,1])
     write.csv(
       xic,
-      file = paste0(tabRepo, tag, '_', targets[it,1], '_XIC.csv')
+      file = paste0(tabRepo, tag, '_XIC_', targets[it,1], '.csv')
     )
+
+    # Save Fit file
+    fit = peak_shape(CVf,v)
+    xic = cbind(CVf,mMS,fit)
+    colnames(xic) = c('CV',targets[it,1],'Fit')
+    write.csv(
+      xic,
+      file = paste0(tabRepo, tag, '_FIT_', targets[it,1], '.csv')
+    )
+
   }
 
   # res = resu[!is.na(resu[,'CV']),]
@@ -335,3 +365,5 @@ for(task in 1:nrow(Tasks)) {
   # Save results
   write.csv(resu,file = paste0(tabRepo,tag,'_results.csv'))
 }
+
+# END ####
