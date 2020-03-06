@@ -6,7 +6,7 @@ fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
-dmz = 0.5 # width of mz window around exact mz for signal averaging
+dmz = 0.7 # width of mz window around exact mz for signal averaging
 dCV = 2.0 # width of CV window around reference CV for peak fit
 
 # Code Setup ####
