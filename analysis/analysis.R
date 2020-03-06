@@ -7,23 +7,24 @@ fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
 dmz = 0.5 # width of mz window around exact mz for signal averaging
-dCV = 2 # width of CV window around reference CV for peak fit
+dCV = 2.0 # width of CV window around reference CV for peak fit
 
 # Code Setup ####
 # Install packages if necessary
 ## CRAN packages
-libs <- c("xtable","mixtools","inlmisc","rlist","repmis")
+libs <- c('xtable','mixtools','inlmisc',
+          'rlist','repmis','assertive')
 for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
     install.packages(
       lib,
       dependencies = TRUE,
-      repos = "https://cran.univ-paris1.fr"
+      repos = 'https://cran.univ-paris1.fr'
     )
   }
 }
-## Load packages and generate biblio
-repmis::LoadandCite(libs,file='../article/packages.bib')
+## Load packages
+repmis::LoadandCite(libs) # ,file='../article/packages.bib')
 
 # Set graphical params
 ## For PNG figures
@@ -133,9 +134,38 @@ plotPeak = function(
 
 }
 
+# Check sanity of user params ####
+file = paste0(dataRepo, tgTable)
+assertive::assert_all_are_existing_files(file)
+
+file = paste0(dataRepo, taskTable)
+assertive::assert_all_are_existing_files(file)
+
+assertive::assert_is_numeric(fwhm_min)
+if(!assertive::is_positive(fwhm_min))
+  stop(paste0('Erreur: fwhm_min =',fwhm_min,' should be positive'))
+
+assertive::assert_is_numeric(fwhm_max)
+if(!assertive::is_positive(fwhm_max))
+  stop(paste0('Erreur: fwhm_max =',fwhm_max,' should be positive'))
+
+assertive::assert_is_numeric(area_min)
+if(!assertive::is_positive(area_min))
+  stop(paste0('Erreur: area_min =',area_min,' should be positive'))
+
+assertive::assert_is_numeric(dmz)
+if(!assertive::is_positive(dmz))
+  stop(paste0('Erreur: dmz =',dmz,' should be positive'))
+
+assertive::assert_is_numeric(dCV)
+if(!assertive::is_positive(dCV))
+  stop(paste0('Erreur: dCV =',dCV,' should be positive'))
+
+
 # Get targets ####
+file = paste0(dataRepo, tgTable)
 targets = read.table(
-  file = paste0(dataRepo, tgTable),
+  file = file,
   header = TRUE,
   sep = '\t',
   dec = '.',
@@ -150,14 +180,23 @@ if(!'CV_ref' %in% colnames(targets))
   targets = cbind(targets,CV_ref=empty)
 
 # Get list of tasks ####
+file = paste0(dataRepo, taskTable)
 Tasks = read.table(
-  file = paste0(dataRepo, taskTable),
+  file = file,
   header = TRUE,
   sep = ',',
   check.names = FALSE,
   stringsAsFactors = FALSE
 )
 
+# Check that files exist before proceeding
+files = paste0(dataRepo,Tasks[,'MS_file'])
+assertive::assert_all_are_existing_files(files)
+
+files = paste0(dataRepo,Tasks[,'DMS_file'])
+assertive::assert_all_are_existing_files(files)
+
+# Loop over tasks ####
 for(task in 1:nrow(Tasks)) {
 
   msTable = Tasks[task,'MS_file']
@@ -179,8 +218,9 @@ for(task in 1:nrow(Tasks)) {
   )
 
   # Get MS ####
+  file = paste0(dataRepo, msTable)
   MS0 = read.table(
-    file = paste0(dataRepo,msTable),
+    file = file,
     header = FALSE,
     sep = ',',
     stringsAsFactors = FALSE
@@ -192,12 +232,13 @@ for(task in 1:nrow(Tasks)) {
   nchan    = n_del_mz[1]
   del_mz   = n_del_mz[2]
   mz       = range_mz[1] + (0:(nchan - 1)) * del_mz
-  MS       = as.matrix(MS0[, -(1:8)],ncol=length(mz),byrow=FALSE)
-  MS       = apply(MS,2,rev) # reverse column to conform with CV
+  MS       = as.matrix(MS0[, -(1:8)], ncol = length(mz), byrow = FALSE)
+  MS       = apply(MS, 2, rev) # reverse column to conform with CV
 
   # Get CV ####
+  file = paste0(dataRepo, CVTable)
   CV0 = read.table(
-    file = paste0(dataRepo, CVTable),
+    file = file,
     header = FALSE,
     sep = '\t',
     stringsAsFactors = FALSE
@@ -279,7 +320,7 @@ for(task in 1:nrow(Tasks)) {
       silent = TRUE
     )
     if(class(res)=="try-error")
-      next # Skip results and figs
+      next # Skip results allocation and figs
 
     # Get best params and uncertainty
     v   = summary(res)$parameters[,"Estimate"]   # Best params
@@ -298,14 +339,14 @@ for(task in 1:nrow(Tasks)) {
       filter_results &
       (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
     )
-      next # Leave 'it' line of table results with NAs
+      next # Skip results allocation and figs
 
     # Store in results table
-    resu[it,5] = signif(mu,4)
-    resu[it,6] = signif(u_mu,2)
-    resu[it,7] = signif(fwhm,3)
-    resu[it,8] = signif(u_fwhm,2)
-    resu[it,9] = signif(area,3)
+    resu[it,5]  = signif(mu,4)
+    resu[it,6]  = signif(u_mu,2)
+    resu[it,7]  = signif(fwhm,3)
+    resu[it,8]  = signif(u_fwhm,2)
+    resu[it,9]  = signif(area,3)
     resu[it,10] = signif(u_area,2)
 
     # Plot data and fit results
@@ -361,6 +402,7 @@ for(task in 1:nrow(Tasks)) {
 
   # res = resu[!is.na(resu[,'CV']),]
   print(resu)
+
   # Save results
   write.csv(resu,file = paste0(tabRepo,tag,'_results.csv'))
 
