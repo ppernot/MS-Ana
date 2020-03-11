@@ -134,6 +134,70 @@ plotPeak = function(
 
 }
 
+plotMaps = function(
+  mz, CV, MS,
+  mex = NA,
+  leg = '',
+  mzlim = range(mz),
+  CVlim = range(CV),
+  zlim = c(0,max(MS)/2),
+  logz = TRUE,
+  gPars
+) {
+
+  nCV = length(CV)
+
+  # Expose gPars list
+  for (n in names(gPars))
+    assign(n,rlist::list.extract(gPars,n))
+
+  par(
+    mfrow = c(1, 2),
+    mar   = mar,
+    mgp   = mgp,
+    tcl   = tcl,
+    lwd   = lwd,
+    cex   = cex
+  )
+
+  M = MS
+  if(logz) {
+    M = log10(MS)
+    zlim =range(M, finite = TRUE)
+  }
+
+  ## 1. image
+
+  image(
+    CV, mz, M,
+    xlab = 'CV',
+    ylab = 'm/z',
+    zlim = zlim,
+    main = leg
+  )
+  grid()
+  if(!any(is.na(mex)))
+    abline(h=mex,lty=1,col=cols_tr2[5])
+
+  ## 1. image
+  sel1 = apply(cbind(CV-CVlim[1],CV-CVlim[2]),1,prod) <= 0
+  sel2 = apply(cbind(mz-mzlim[1],mz-mzlim[2]),1,prod) <= 0
+
+  image(
+    CV[sel1], mz[sel2], M[sel1,sel2],
+    xlim = CVlim,
+    xlab = 'CV',
+    ylim = mzlim,
+    ylab = 'm/z',
+    zlim = zlim,
+    main = leg
+  )
+  grid()
+  if(!any(is.na(mex)))
+    abline(h=mex,lty=1,col=cols_tr2[5])
+
+}
+
 # Check sanity of user params ####
 file = paste0(dataRepo, tgTable)
 assertive::assert_all_are_existing_files(file)
@@ -349,6 +413,9 @@ for(task in 1:nrow(Tasks)) {
     resu[it,9]  = signif(area,3)
     resu[it,10] = signif(u_area,2)
 
+    selCV = 1:nCV # Philippe
+    CVf = CV      # Philippe
+
     # Plot data and fit results
     plotPeak(
       mz, CV, MS, CVf, mMS,
@@ -398,6 +465,35 @@ for(task in 1:nrow(Tasks)) {
     xfi = cbind(xfi,rev(fit))
     colnames(xfi) = c(nam0,targets[it,1])
 
+  }
+
+  # Global Heat maps
+  mex = targets[,'m/z_exact']
+  plotMaps(
+    mz, CV, MS,
+    mex = mex,
+    leg = 'log10(MS)',
+    mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
+    CVlim = range(CV),
+    logz = TRUE,
+    gPars = gParsLoc
+  )
+  if(save_figures) {
+    png(
+      filename = paste0(figRepo, tag,
+                        '_heatmaps.png'),
+      width    = 2*gPars$reso,
+      height   =   gPars$reso )
+    plotMaps(
+      mz, CV, MS,
+      mex = mex,
+      leg = 'log10(MS)',
+      mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
+      CVlim = range(CV),
+      logz = TRUE,
+      gPars = gPars
+    )
+    dev.off()
   }
 
   # res = resu[!is.na(resu[,'CV']),]
