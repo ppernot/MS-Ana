@@ -2,7 +2,7 @@
 taskTable = 'pm.csv'
 tgTable = 'targets.csv'
 filter_results = TRUE
-fwhm_min = 0.7
+fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
@@ -375,26 +375,32 @@ for(task in 1:nrow(Tasks)) {
     mz0 = targets[it,'m/z_exact']
     mz1 = mz0 - dmz/2 # min mz for averaging
     mz2 = mz0 + dmz/2 # max mz
+    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
 
     # Select CV window
-    CV0 = targets[it,'CV_ref']
-    if(is.na(CV0)) {
-      # Use full range
-      selCV = 1:nCV
-      CVf = CV
-    } else {
-      CV1 = CV0 - dCV/2
-      CV2 = CV0 + dCV/2
-      selCV = CV >= CV1 & CV <= CV2
-      CVf = CV[selCV]
-    }
+    mMStot = rowSums(MS[, selMz])
 
-    # Estimate Profile
-    selMz  = mz >= mz1 & mz <= mz2     # Select mz area
-    mMS    = rowSums(MS[selCV, selMz]) # Sum over selected mz
-    mMStot = rowSums(MS[, selMz])      # Full CV range for output in XIC file
+    CV0 = targets[it,'CV_ref']
+    if(is.na(CV0))
+      CV0 = CV[which.max(mMStot)]
+    CV1 = CV0 - dCV/2
+    CV2 = CV0 + dCV/2
+    selCV = CV >= CV1 & CV <= CV2
+    CVf = CV[selCV]
+
+    # if(is.na(CV0)) {
+    #   # Use full range
+    #   selCV = 1:nCV
+    #   CVf = CV
+    # } else {
+    #   CV1 = CV0 - dCV/2
+    #   CV2 = CV0 + dCV/2
+    #   selCV = CV >= CV1 & CV <= CV2
+    #   CVf = CV[selCV]
+    # }
 
     # Normal fit
+    mMS = rowSums(MS[selCV, selMz]) # Sum over selected mz
     res = try(
       nls(
         mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
@@ -448,7 +454,7 @@ for(task in 1:nrow(Tasks)) {
     }
 
     # Plot data and fit results
-    res = paste0(
+    pars = paste0(
       ifelse (warning, '** WARNING **\n','') ,
       'CV = ',      signif(mu,4),
       '\n FWHM = ', signif(fwhm,3),
@@ -460,7 +466,7 @@ for(task in 1:nrow(Tasks)) {
       mex = targets[it,'m/z_exact'],
       leg = targets[it,'Name'],
       tag = tag,
-      res = res,
+      res = pars,
       mzlim = c(mz1,mz2),
       CVlim = range(CV),
       gPars = gParsLoc
@@ -477,7 +483,7 @@ for(task in 1:nrow(Tasks)) {
         mex = targets[it,'m/z_exact'],
         leg = targets[it,'Name'],
         tag = tag,
-        res = res,
+        res = pars,
         mzlim = c(mz1,mz2),
         CVlim = range(CV),
         gPars = gPars
