@@ -6,7 +6,7 @@ fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
-dmz = 0.7 # width of mz window around exact mz for signal averaging
+dmz = 1.0 # width of mz window around exact mz for signal averaging
 dCV = 2.0 # width of CV window around reference CV for peak fit
 
 # Code Setup ####
@@ -371,6 +371,7 @@ for(task in 1:nrow(Tasks)) {
   # Loop over targets ####
   for(it in 1:nrow(targets)) {
 
+
     # Select mz window
     mz0 = targets[it,'m/z_exact']
     mz1 = mz0 - dmz/2 # min mz for averaging
@@ -387,16 +388,17 @@ for(task in 1:nrow(Tasks)) {
     selCV = CV >= CV1 & CV <= CV2
     CVf = CV[selCV]
 
-    # if(is.na(CV0)) {
-    #   # Use full range
-    #   selCV = 1:nCV
-    #   CVf = CV
-    # } else {
-    #   CV1 = CV0 - dCV/2
-    #   CV2 = CV0 + dCV/2
-    #   selCV = CV >= CV1 & CV <= CV2
-    #   CVf = CV[selCV]
-    # }
+    # Refine mz window
+    MSloc = MS[selCV, selMz]
+    mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+    mz_max = which.max(MSloc[which.max(mMS),])
+    mz0 = mz[selMz][mz_max]
+    mz1 = mz0 - dmz/2 # min mz for averaging
+    mz2 = mz0 + dmz/2 # max mz
+    targets[it,'m/z_exact'] = mz0
+    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+
+    # plot(mz[selMz],MS[which.max(mMStot),selMz])
 
     # Normal fit
     mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
