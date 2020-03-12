@@ -376,10 +376,9 @@ for(task in 1:nrow(Tasks)) {
     mz1 = mz0 - dmz/2 # min mz for averaging
     mz2 = mz0 + dmz/2 # max mz
     selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+    mMStot = rowSums(MS[, selMz])*del_mz # Integrated CV profile
 
     # Select CV window
-    mMStot = rowSums(MS[, selMz])
-
     CV0 = targets[it,'CV_ref']
     if(is.na(CV0))
       CV0 = CV[which.max(mMStot)]
@@ -400,7 +399,7 @@ for(task in 1:nrow(Tasks)) {
     # }
 
     # Normal fit
-    mMS = rowSums(MS[selCV, selMz]) # Sum over selected mz
+    mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
     res = try(
       nls(
         mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
