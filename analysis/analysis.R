@@ -33,7 +33,7 @@ gPars = list(
   cols_tr  = rev(inlmisc::GetColors(8, alpha = 0.2))[1:7],
   cols_tr2 = rev(inlmisc::GetColors(8, alpha = 0.5))[1:7],
   pty      = 's',
-  mar      = c(3,3,1.6,.5),
+  mar      = c(3,3,3,.5),
   mgp      = c(2,.75,0),
   tcl      = -0.5,
   lwd      = 4.0,
@@ -66,8 +66,9 @@ peak_shape = function(x,p) {
 plotPeak = function(
   mz, CV, MS, CVf, mMS, vg,
   mex = NA,
-  leg = '',
+  leg = NA,
   res = NA,
+  tag = NA,
   model = peak_shape,
   mzlim = range(mz),
   CVlim = range(CV),
@@ -93,17 +94,25 @@ plotPeak = function(
   sel1 = apply(cbind(CV-CVlim[1],CV-CVlim[2]),1,prod) <= 0
   sel2 = apply(cbind(mz-mzlim[1],mz-mzlim[2]),1,prod) <= 0
 
+
   image(
     CV[sel1], mz[sel2], MS[sel1,sel2],
     xlim = CVlim,
     xlab = 'CV',
     ylim = mzlim,
-    ylab = 'm/z',
-    main = leg
+    ylab = 'm/z'
   )
   grid()
+
+  if(!is.na(leg))
+    title(main = leg, line = 0.5)
+
+  if(!is.na(tag))
+    mtext(text = tag, side = 3, line = 2)
+
   if(!is.na(mex))
-    abline(h=mex,lty=1,col=cols[2])
+    abline(h=mex, lty=1, col=cols[2])
+
 
   ## 2. CV profile
   xmod = seq(min(CVf),max(CVf),length.out = 1000)
@@ -115,12 +124,14 @@ plotPeak = function(
     col  = cols[4],
     xlim = CVlim,
     xlab = 'CV',
-    ylim = range(c(mMS,vmod)),
-    ylab = 'a.u.',
-    main = 'Mean CV profile'
+    ylim = range(c(mMS,vmod), na.rm = TRUE, finite = TRUE),
+    ylab = 'a.u.'
   )
+  title(main = 'Mean CV profile', line = 0.5)
+
   ## 2.1 Gaussian fit
-  lines(xmod,vmod,col = cols[2])
+  if(!any(is.na(vg)))
+    lines(xmod,vmod,col = cols[2])
 
   ## Add fit results
   if (!is.na(res))
@@ -137,7 +148,8 @@ plotPeak = function(
 plotMaps = function(
   mz, CV, MS,
   mex = NA,
-  leg = '',
+  leg = NA,
+  tag = NA,
   mzlim = range(mz),
   CVlim = range(CV),
   zlim = c(0,max(MS)/2),
@@ -172,10 +184,16 @@ plotMaps = function(
     CV, mz, M,
     xlab = 'CV',
     ylab = 'm/z',
-    zlim = zlim,
-    main = leg
+    zlim = zlim
   )
   grid()
+
+  if(!is.na(leg))
+    title(main = leg, line = 0.5)
+
+  if(!is.na(tag))
+    mtext(text = tag, side = 3, line = 2)
+
   if(!any(is.na(mex)))
     abline(h=mex,lty=1,col=cols_tr2[5])
 
@@ -189,10 +207,13 @@ plotMaps = function(
     xlab = 'CV',
     ylim = mzlim,
     ylab = 'm/z',
-    zlim = zlim,
-    main = leg
+    zlim = zlim
   )
   grid()
+
+  if(!is.na(leg))
+    title(main = leg, line = 0.5)
+
   if(!any(is.na(mex)))
     abline(h=mex,lty=1,col=cols_tr2[5])
 
@@ -383,52 +404,56 @@ for(task in 1:nrow(Tasks)) {
       ),
       silent = TRUE
     )
-    if(class(res)=="try-error")
-      next # Skip results allocation and figs
+    if(class(res)=="try-error") {
+      # Fit failed => no fit params
+      v    = NA
+      mu   = NA
+      fwhm = NA
+      area = NA
 
-    # Get best params and uncertainty
-    v   = summary(res)$parameters[,"Estimate"]   # Best params
-    u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
+    } else {
+      # Get best params and uncertainty
+      v   = summary(res)$parameters[,"Estimate"]   # Best params
+      u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
 
-    # Transform params to quantities of interest
-    mu     = v[1]
-    u_mu   = u_v[1]
-    fwhm   = 2.355 * abs(v[2])
-    u_fwhm = 2.355 * u_v[2]
-    area   = sqrt(2*pi) * abs(v[2]) * v[3]
-    u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
+      # Transform params to quantities of interest
+      mu     = v[1]
+      u_mu   = u_v[1]
+      fwhm   = 2.355 * abs(v[2])
+      u_fwhm = 2.355 * u_v[2]
+      area   = sqrt(2*pi) * abs(v[2]) * v[3]
+      u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
 
-    # Quality control
-    if(
-      filter_results &
-      (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
-    )
-      next # Skip results allocation and figs
+      # Quality control
+      if(
+        filter_results &
+        (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
+      )
+        next # Skip results allocation and figs
 
-    # Store in results table
-    resu[it,5]  = signif(mu,4)
-    resu[it,6]  = signif(u_mu,2)
-    resu[it,7]  = signif(fwhm,3)
-    resu[it,8]  = signif(u_fwhm,2)
-    resu[it,9]  = signif(area,3)
-    resu[it,10] = signif(u_area,2)
-
-    selCV = 1:nCV # Philippe
-    CVf = CV      # Philippe
+      # Store in results table
+      resu[it,5]  = signif(mu,4)
+      resu[it,6]  = signif(u_mu,2)
+      resu[it,7]  = signif(fwhm,3)
+      resu[it,8]  = signif(u_fwhm,2)
+      resu[it,9]  = signif(area,3)
+      resu[it,10] = signif(u_area,2)
+    }
 
     # Plot data and fit results
     plotPeak(
-      mz, CV, MS, CVf, mMS,
+      mz, CV, MS, CV, mMStot,
       vg = v,
       mex = targets[it,'m/z_exact'],
       leg = targets[it,'Name'],
+      tag = tag,
       res = paste0(
         'CV = ',      signif(mu,4),
         '\n FWHM = ', signif(fwhm,3),
         '\n Area = ', signif(area,3)
       ),
       mzlim = c(mz1,mz2),
-      CVlim = range(CVf),
+      CVlim = range(CV),
       gPars = gParsLoc
     )
 
@@ -438,10 +463,11 @@ for(task in 1:nrow(Tasks)) {
         width    = 2*gPars$reso,
         height   =   gPars$reso )
       plotPeak(
-        mz, CV, MS, CVf, mMS,
+        mz, CV, MS, CV, mMStot,
         vg = v,
         mex = targets[it,'m/z_exact'],
         leg = targets[it,'Name'],
+        tag = tag,
         res = paste0(
           'CV = ',      signif(mu,4),
           '\n FWHM = ', signif(fwhm,3),
@@ -473,6 +499,7 @@ for(task in 1:nrow(Tasks)) {
     mz, CV, MS,
     mex = mex,
     leg = 'log10(MS)',
+    tag = tag,
     mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
     CVlim = range(CV),
     logz = TRUE,
@@ -488,6 +515,7 @@ for(task in 1:nrow(Tasks)) {
       mz, CV, MS,
       mex = mex,
       leg = 'log10(MS)',
+      tag = tag,
       mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
       CVlim = range(CV),
       logz = TRUE,
