@@ -1,8 +1,8 @@
 # User configuration params ####
 taskTable = 'pm.csv'
 tgTable = 'targets.csv'
-filter_results = FALSE
-fwhm_min = 0.5
+filter_results = TRUE
+fwhm_min = 0.7
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
@@ -108,7 +108,7 @@ plotPeak = function(
     title(main = leg, line = 0.5)
 
   if(!is.na(tag))
-    mtext(text = tag, side = 3, line = 2)
+    mtext(text = tag, side = 3, line = 2, cex = cex)
 
   if(!is.na(mex))
     abline(h=mex, lty=1, col=cols[2])
@@ -117,6 +117,7 @@ plotPeak = function(
   ## 2. CV profile
   xmod = seq(min(CVf),max(CVf),length.out = 1000)
   vmod = model(xmod,vg)
+  ylim = range(c(mMS,vmod), na.rm = TRUE, finite = TRUE)
   plot(
     CVf,
     mMS,
@@ -124,7 +125,7 @@ plotPeak = function(
     col  = cols[4],
     xlim = CVlim,
     xlab = 'CV',
-    ylim = range(c(mMS,vmod), na.rm = TRUE, finite = TRUE),
+    ylim = ylim,
     ylab = 'a.u.'
   )
   title(main = 'Mean CV profile', line = 0.5)
@@ -136,10 +137,11 @@ plotPeak = function(
   ## Add fit results
   if (!is.na(res))
     legend(
-      'topleft',
+      x=CVlim[1], y=ylim[2],
+      yjust = 1.75,
       title  = res,
       legend = '',
-      inset  = 0.12,
+      # inset  = 0.12,
       bty    = 'n',
       cex    = 0.8)
 
@@ -192,7 +194,7 @@ plotMaps = function(
     title(main = leg, line = 0.5)
 
   if(!is.na(tag))
-    mtext(text = tag, side = 3, line = 2)
+    mtext(text = tag, side = 3, line = 2, cex = cex)
 
   if(!any(is.na(mex)))
     abline(h=mex,lty=1,col=cols_tr2[5])
@@ -388,9 +390,9 @@ for(task in 1:nrow(Tasks)) {
     }
 
     # Estimate Profile
-    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-    mMS    = rowSums(MS[selCV, selMz]) # sum over selected mz
-    mMStot = rowSums(MS[, selMz]) # full CV range for output in XIC file
+    selMz  = mz >= mz1 & mz <= mz2     # Select mz area
+    mMS    = rowSums(MS[selCV, selMz]) # Sum over selected mz
+    mMStot = rowSums(MS[, selMz])      # Full CV range for output in XIC file
 
     # Normal fit
     res = try(
@@ -428,30 +430,37 @@ for(task in 1:nrow(Tasks)) {
       if(
         filter_results &
         (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
-      )
-        next # Skip results allocation and figs
+      ) {
+        warning = TRUE
+        # Do not store results
 
-      # Store in results table
-      resu[it,5]  = signif(mu,4)
-      resu[it,6]  = signif(u_mu,2)
-      resu[it,7]  = signif(fwhm,3)
-      resu[it,8]  = signif(u_fwhm,2)
-      resu[it,9]  = signif(area,3)
-      resu[it,10] = signif(u_area,2)
+      } else {
+        warning = FALSE
+        # Store in results table
+        resu[it,5]  = signif(mu,4)
+        resu[it,6]  = signif(u_mu,2)
+        resu[it,7]  = signif(fwhm,3)
+        resu[it,8]  = signif(u_fwhm,2)
+        resu[it,9]  = signif(area,3)
+        resu[it,10] = signif(u_area,2)
+
+      }
     }
 
     # Plot data and fit results
+    res = paste0(
+      ifelse (warning, '** WARNING **\n','') ,
+      'CV = ',      signif(mu,4),
+      '\n FWHM = ', signif(fwhm,3),
+      '\n Area = ', signif(area,3)
+    )
     plotPeak(
       mz, CV, MS, CV, mMStot,
       vg = v,
       mex = targets[it,'m/z_exact'],
       leg = targets[it,'Name'],
       tag = tag,
-      res = paste0(
-        'CV = ',      signif(mu,4),
-        '\n FWHM = ', signif(fwhm,3),
-        '\n Area = ', signif(area,3)
-      ),
+      res = res,
       mzlim = c(mz1,mz2),
       CVlim = range(CV),
       gPars = gParsLoc
@@ -468,11 +477,7 @@ for(task in 1:nrow(Tasks)) {
         mex = targets[it,'m/z_exact'],
         leg = targets[it,'Name'],
         tag = tag,
-        res = paste0(
-          'CV = ',      signif(mu,4),
-          '\n FWHM = ', signif(fwhm,3),
-          '\n Area = ', signif(area,3)
-        ),
+        res = res,
         mzlim = c(mz1,mz2),
         CVlim = range(CV),
         gPars = gPars
