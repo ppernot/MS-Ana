@@ -94,7 +94,6 @@ plotPeak = function(
   sel1 = apply(cbind(CV-CVlim[1],CV-CVlim[2]),1,prod) <= 0
   sel2 = apply(cbind(mz-mzlim[1],mz-mzlim[2]),1,prod) <= 0
 
-
   image(
     CV[sel1], mz[sel2], MS[sel1,sel2],
     xlim = CVlim,
