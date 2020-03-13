@@ -6,8 +6,12 @@ fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
-dmz = 1.0 # width of mz window around exact mz for signal averaging
-dCV = 2.0 # width of CV window around reference CV for peak fit
+fit_dim = 2     # Fit 2D peaks
+fallback = TRUE # Fallback on 1D fit if 2D fails
+dmz = 1.0       # Width of mz window around
+                # exact mz for signal averaging
+dCV = 2.0       # Width of CV window around
+                # reference CV for peak fit
 
 # Code Setup ####
 # Install packages if necessary
@@ -61,7 +65,11 @@ sink()
 
 ## Functions
 peak_shape = function(x,p) {
-  p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
+  if(length(p)==3)
+    p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
+  else
+    sqrt(2*pi)*p['k']*abs(p['sx']) *
+    exp(-1/2*(x-p['my'])^2/p['sy']^2)
 }
 plotPeak = function(
   mz, CV, MS, CVf, mMS, vg,
@@ -145,7 +153,114 @@ plotPeak = function(
       cex    = 0.8)
 
 }
+plotPeakg = function(
+  mz, CV, MS, #CVf, mMS, vg,
+  fitOut,
+  mex = NA,
+  leg = NA,
+  val = NA,
+  tag = NA,
+  # model = peak_shape,
+  # mzlim = range(mz),
+  # CVlim = range(CV),
+  gPars
+) {
 
+  nCV = length(CV)
+
+  # Expose fitOut list
+  for (n in names(fitOut))
+    assign(n,rlist::list.extract(fitOut,n))
+
+  mzlim = c(mz1,mz2)
+  CVlim = range(CV)
+
+  # Expose gPars list
+  for (n in names(gPars))
+    assign(n,rlist::list.extract(gPars,n))
+
+  par(
+    mfrow = c(1, 2),
+    mar   = mar,
+    mgp   = mgp,
+    tcl   = tcl,
+    lwd   = lwd,
+    cex   = cex
+  )
+
+  ## 1. image
+  sel1 = apply(cbind(CV-CVlim[1],CV-CVlim[2]),1,prod) <= 0
+  sel2 = apply(cbind(mz-mzlim[1],mz-mzlim[2]),1,prod) <= 0
+
+  image(
+    CV[sel1], mz[sel2], MS[sel1,sel2],
+    xlim = CVlim,
+    xlab = 'CV',
+    ylim = mzlim,
+    ylab = 'm/z'
+  )
+  grid()
+
+  if(class(res) != 'try-error') {
+    v   = summary(res)$parameters[,"Estimate"]
+    if(length(v) > 3) {
+      # image(CVf, mzLoc, MSloc)
+      p = matrix(
+        predict(res),
+        ncol=ncol(MSloc),
+        nrow=nrow(MSloc),
+        byrow = TRUE
+      )
+      contour(CVf, mzLoc, p, col = cols_tr2[5], add=TRUE)
+    }
+  }
+
+  if(!is.na(leg))
+    title(main = leg, line = 0.5)
+
+  if(!is.na(tag))
+    mtext(text = tag, side = 3, line = 2, cex = cex)
+
+  if(!is.na(mex))
+    abline(h=mex, lty=1, col=cols[2])
+
+  ## 2. CV profile
+  xmod = seq(min(CV),max(CV),length.out = 1000)
+  if(class(res) != 'try-error') {
+    v   = summary(res)$parameters[,"Estimate"]
+    vmod = peak_shape(xmod,v)
+  } else {
+    v = NA
+    vmod = rep(NA,length(xmod))
+  }
+  ylim = range(c(mMS,vmod), na.rm = TRUE, finite = TRUE)
+  plot(
+    CV, mMStot,
+    type = 'p', pch = 16,
+    col  = cols[4],
+    xlim = CVlim,
+    xlab = 'CV',
+    ylim = ylim,
+    ylab = 'a.u.'
+  )
+  title(main = 'Mean CV profile', line = 0.5)
+
+  ## 2.1 Gaussian fit
+  if(!any(is.na(v)))
+    lines(xmod,vmod,col = cols[2])
+
+  ## Add fit results
+  if (!is.na(val))
+    legend(
+      x=CVlim[1], y=ylim[2],
+      yjust = 1.75,
+      title  = val,
+      legend = '',
+      # inset  = 0.12,
+      bty    = 'n',
+      cex    = 0.8)
+
+}
 plotMaps = function(
   mz, CV, MS,
   mex = NA,
@@ -218,6 +333,245 @@ plotMaps = function(
   if(!any(is.na(mex)))
     abline(h=mex,lty=1,col=cols_tr2[5])
 
+}
+
+fit1D <- function(
+  mz0, CV0,
+  dmz, dCV,
+  mz, cv, MS,
+  del_mz
+) {
+
+  # Select mz window
+  mz1 = mz0 - dmz/2 # min mz for averaging
+  mz2 = mz0 + dmz/2 # max mz
+  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+  # Integrated CV profile
+  mMStot = rowSums(MS[, selMz])*del_mz
+
+  # Select CV window
+  if(is.na(CV0))
+    CV0 = CV[which.max(mMStot)]
+  CV1 = CV0 - dCV/2
+  CV2 = CV0 + dCV/2
+  selCV = CV >= CV1 & CV <= CV2
+  CVf = CV[selCV]
+
+  # Refine mz window
+  MSloc = MS[selCV, selMz]
+  mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+  mz_max = which.max(MSloc[which.max(mMS),])
+  mz0 = mz[selMz][mz_max]
+  mz1 = mz0 - dmz/2 # min mz for averaging
+  mz2 = mz0 + dmz/2 # max mz
+
+  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+
+  # plot(mz[selMz],MS[which.max(mMStot),selMz])
+
+  # Normal fit
+  mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
+  res = try(
+    nls(
+      mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
+      start = c(
+        mu    = CVf[which.max(mMS)],
+        sigma = 0.7,
+        k     = max(mMS)
+      )
+    ),
+    silent = TRUE
+  )
+
+  return(
+    list(
+      mz0 = mz0,
+      mz1 = mz1,
+      mz2 = mz2,
+      res = res,
+      mMS = mMS,
+      mMStot = mMStot,
+      CVf = CVf
+    )
+  )
+}
+getPars1D <- function(res) {
+  # Get best params and uncertainty
+  v   = summary(res)$parameters[,"Estimate"]   # Best params
+  u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
+
+  # Transform params to quantities of interest
+  mu     = v[1]
+  u_mu   = u_v[1]
+  fwhm   = 2.355 * abs(v[2])
+  u_fwhm = 2.355 * u_v[2]
+  area   = sqrt(2*pi) * abs(v[2]) * v[3]
+  u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
+  return(
+    list(
+      v      = v,
+      u_v    = u_v,
+      mu     = mu,
+      u_mu   = u_mu,
+      fwhm   = fwhm,
+      u_fwhm = u_fwhm,
+      area   = area,
+      u_area = u_area
+    )
+  )
+}
+
+fit2D <- function(
+  mz0, CV0,
+  dmz, dCV,
+  mz, cv, MS,
+  del_mz
+) {
+
+  # Select mz window
+  mz1 = mz0 - dmz/2 # min mz for averaging
+  mz2 = mz0 + dmz/2 # max mz
+  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+  # Integrated CV profile
+  mMStot = rowSums(MS[, selMz])*del_mz
+
+  # Select CV window
+  if(is.na(CV0))
+    CV0 = CV[which.max(mMStot)]
+  CV1 = CV0 - dCV/2
+  CV2 = CV0 + dCV/2
+  selCV = CV >= CV1 & CV <= CV2
+  CVf = CV[selCV]
+
+  # Refine mz window
+  # MSloc = MS[selCV, selMz]
+  # mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+  # mz_max = which.max(MSloc[which.max(mMS),])
+  # mz0 = mz[selMz][mz_max]
+  # mz1 = mz0 - dmz/2 # min mz for averaging
+  # mz2 = mz0 + dmz/2 # max mz
+  # selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+
+
+  MSloc = MS[selCV, selMz]
+  mzLoc = mz[selMz]
+  mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+
+  # Normal fit
+  grid = expand.grid(x = mzLoc, y = CVf)
+  x = grid$x
+  y = grid$y
+  z = as.vector(t(MSloc))
+
+  res = try(
+    nls(
+      z ~ k*exp(-0.5/(1-rho^2) * (
+        (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
+        2*rho*(x-mx)*(y-my)/(sx*sy))),
+      start = c(
+        mx  = x[which.max(z)],
+        sx  = 0.7,
+        my  = y[which.max(z)],
+        sy  = 0.4,
+        rho = 0,
+        k  = max(z)
+      )
+    ),
+    silent = TRUE
+  )
+
+  return(
+    list(
+      mz0 = mz0,
+      mz1 = mz1,
+      mz2 = mz2,
+      res = res,
+      mMS = mMS,
+      mMStot = mMStot,
+      CVf = CVf,
+      mzLoc = mzLoc,
+      MSloc = MSloc
+    )
+  )
+}
+plot2Dfit <- function(
+  CVf, mzLoc, MSloc, res,
+  leg = NA,
+  tag = NA,
+  gPars
+) {
+
+  for (n in names(gPars))
+    assign(n,rlist::list.extract(gPars,n))
+
+  par(
+    mfrow = c(1, 1),
+    mar   = mar,
+    mgp   = mgp,
+    tcl   = tcl,
+    lwd   = lwd,
+    cex   = cex
+  )
+
+  image(CVf, mzLoc, MSloc)
+  p = matrix(
+    predict(res),
+    ncol=ncol(MSloc),
+    nrow=nrow(MSloc),
+    byrow = TRUE
+  )
+  grid()
+  contour(CVf, mzLoc, p, col = cols_tr2[5], add=TRUE)
+
+  if(!is.na(leg))
+    title(main = leg, line = 0.5)
+
+  if(!is.na(tag))
+    mtext(text = tag, side = 3, line = 2, cex = cex)
+
+  # if(!any(is.na(mex)))
+  #   abline(h=mex,lty=1,col=cols_tr2[5])
+}
+getPars2D <- function(res) {
+  # Get best params and uncertainty
+  v   = summary(res)$parameters[,"Estimate"]   # Best params
+  u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
+
+  # Transform params to quantities of interest
+  mu     = v['my']
+  u_mu   = u_v['my']
+  fwhm   = 2.355 * abs(v['sy'])
+  u_fwhm = 2.355 * u_v['sy']
+  area   = 2*pi * abs(v['sx'] * v['sy'] * v['k'])
+  u_area = area * sqrt((u_v['sx']/v['sx'])^2 +
+                       (u_v['sy']/v['sy'])^2 +
+                       (u_v['k']/v['k'])^2
+                       )
+
+  return(
+    list(
+      v      = v,
+      u_v    = u_v,
+      mu     = mu,
+      u_mu   = u_mu,
+      fwhm   = fwhm,
+      u_fwhm = u_fwhm,
+      area   = area,
+      u_area = u_area
+    )
+  )
+
+}
+getPars = function(res){
+
+  v   = summary(res)$parameters[,"Estimate"]
+
+  if(length(v)==3)
+    out = getPars1D(res)
+  else
+    out = getPars2D(res)
+
+  return(out)
 }
 
 # Check sanity of user params ####
@@ -370,48 +724,40 @@ for(task in 1:nrow(Tasks)) {
   # Loop over targets ####
   for(it in 1:nrow(targets)) {
 
-
-    # Select mz window
     mz0 = targets[it,'m/z_exact']
-    mz1 = mz0 - dmz/2 # min mz for averaging
-    mz2 = mz0 + dmz/2 # max mz
-    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-    mMStot = rowSums(MS[, selMz])*del_mz # Integrated CV profile
-
-    # Select CV window
     CV0 = targets[it,'CV_ref']
-    if(is.na(CV0))
-      CV0 = CV[which.max(mMStot)]
-    CV1 = CV0 - dCV/2
-    CV2 = CV0 + dCV/2
-    selCV = CV >= CV1 & CV <= CV2
-    CVf = CV[selCV]
 
-    # Refine mz window
-    MSloc = MS[selCV, selMz]
-    mMS = rowSums(MSloc)*del_mz # Sum over selected mz
-    mz_max = which.max(MSloc[which.max(mMS),])
-    mz0 = mz[selMz][mz_max]
-    mz1 = mz0 - dmz/2 # min mz for averaging
-    mz2 = mz0 + dmz/2 # max mz
-    targets[it,'m/z_exact'] = mz0
-    selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-
-    # plot(mz[selMz],MS[which.max(mMStot),selMz])
-
-    # Normal fit
-    mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
-    res = try(
-      nls(
-        mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
-        start = c(
-          mu    = CVf[which.max(mMS)],
-          sigma = 0.7,
-          k     = max(mMS)
+    if(fit_dim == 2) {
+      # 2D fit of peaks
+      fitOut = fit2D(
+        mz0, CV0,
+        dmz, dCV,
+        mz, cv, MS,
+        del_mz
+      )
+      if(class(fitOut$res) == 'try-error' & fallback)
+        # 1D fit of peaks
+        fitOut = fit1D(
+          mz0, CV0,
+          dmz, dCV,
+          mz, cv, MS,
+          del_mz
         )
-      ),
-      silent = TRUE
-    )
+    } else {
+      # 1D fit of peaks
+      fitOut = fit1D(
+        mz0, CV0,
+        dmz, dCV,
+        mz, cv, MS,
+        del_mz
+      )
+    }
+
+    for (n in names(fitOut))
+      assign(n,rlist::list.extract(fitOut,n))
+
+    targets[it,'m/z_exact'] = mz0
+
     if(class(res)=="try-error") {
       # Fit failed => no fit params
       v    = NA
@@ -420,17 +766,9 @@ for(task in 1:nrow(Tasks)) {
       area = NA
 
     } else {
-      # Get best params and uncertainty
-      v   = summary(res)$parameters[,"Estimate"]   # Best params
-      u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
-
-      # Transform params to quantities of interest
-      mu     = v[1]
-      u_mu   = u_v[1]
-      fwhm   = 2.355 * abs(v[2])
-      u_fwhm = 2.355 * u_v[2]
-      area   = sqrt(2*pi) * abs(v[2]) * v[3]
-      u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
+      peakPars = getPars(res)
+      for (n in names(peakPars))
+        assign(n,rlist::list.extract(peakPars,n))
 
       # Quality control
       if(
@@ -460,15 +798,13 @@ for(task in 1:nrow(Tasks)) {
       '\n FWHM = ', signif(fwhm,3),
       '\n Area = ', signif(area,3)
     )
-    plotPeak(
-      mz, CV, MS, CV, mMStot,
-      vg = v,
+    plotPeakg(
+      mz, CV, MS,
+      fitOut,
       mex = targets[it,'m/z_exact'],
       leg = targets[it,'Name'],
       tag = tag,
-      res = pars,
-      mzlim = c(mz1,mz2),
-      CVlim = range(CV),
+      val = pars,
       gPars = gParsLoc
     )
 
@@ -477,15 +813,13 @@ for(task in 1:nrow(Tasks)) {
         filename = paste0(figRepo, tag, '_', targets[it,1], '.png'),
         width    = 2*gPars$reso,
         height   =   gPars$reso )
-      plotPeak(
-        mz, CV, MS, CV, mMStot,
-        vg = v,
+      plotPeakg(
+        mz, CV, MS,
+        fitOut,
         mex = targets[it,'m/z_exact'],
         leg = targets[it,'Name'],
         tag = tag,
-        res = pars,
-        mzlim = c(mz1,mz2),
-        CVlim = range(CV),
+        val = pars,
         gPars = gPars
       )
       dev.off()
