@@ -1,11 +1,12 @@
 # User configuration params ####
-taskTable = 'pm.csv'
-tgTable = 'targets.csv'
+taskTable = 'list_of_files_Viet.csv'
+tgTable = 'list_of_targets_Plasma_Viet.csv'
 filter_results = TRUE
 fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
+weighted_fit = FALSE
 fit_dim = 2     # Fit 2D peaks
 fallback = TRUE # Fallback on 1D fit if 2D fails
 dmz = 1.0       # Width of mz window around
@@ -253,7 +254,8 @@ fit1D <- function(
   mz0, CV0,
   dmz, dCV,
   mz, cv, MS,
-  del_mz
+  del_mz,
+  weighted = FALSE
 ) {
 
   # Select mz window
@@ -313,7 +315,8 @@ fit2D <- function(
   mz0, CV0,
   dmz, dCV,
   mz, cv, MS,
-  del_mz
+  del_mz,
+  weighted = FALSE
 ) {
 
   # Select mz window
@@ -350,6 +353,12 @@ fit2D <- function(
   x = grid$x
   y = grid$y
   z = as.vector(t(MSloc))
+  weights = rep(1,length(z))
+  if(weighted){ # Poisson
+    weights = 1 / z
+    vm = min(z[z>0])
+    weights[!is.finite(weights)] = 1 / vm
+  }
 
   res = try(
     nls(
@@ -363,7 +372,8 @@ fit2D <- function(
         sy  = 0.4,
         rho = 0,
         k  = max(z)
-      )
+      ),
+      weights = weights
     ),
     silent = TRUE
   )
@@ -482,7 +492,7 @@ file = paste0(dataRepo, tgTable)
 targets = read.table(
   file = file,
   header = TRUE,
-  sep = '\t',
+  sep = ';',
   dec = '.',
   check.names = FALSE,
   fill = TRUE,
@@ -548,7 +558,6 @@ for(task in 1:nrow(Tasks)) {
   del_mz   = n_del_mz[2]
   mz       = range_mz[1] + (0:(nchan - 1)) * del_mz
   MS       = as.matrix(MS0[, -(1:8)], ncol = length(mz), byrow = FALSE)
-  MS       = apply(MS, 2, rev) # reverse column to conform with CV
 
   # Get CV ####
   file = paste0(dataRepo, CVTable)
@@ -580,6 +589,7 @@ for(task in 1:nrow(Tasks)) {
 
   time = time[selt]
   MS   = MS[selt,]
+  MS       = apply(MS, 2, rev) # reverse column to conform with CV
   CV   = CV[selCV]
   nCV  = length(CV)
 
@@ -609,7 +619,8 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, cv, MS,
-        del_mz
+        del_mz,
+        weighted = weighted_fit
       )
       if(class(fitOut$res) == 'try-error' & fallback)
         # 1D fit of peaks
@@ -617,7 +628,8 @@ for(task in 1:nrow(Tasks)) {
           mz0, CV0,
           dmz, dCV,
           mz, cv, MS,
-          del_mz
+          del_mz,
+          weighted = weighted_fit
         )
     } else {
       # 1D fit of peaks
@@ -625,7 +637,8 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, cv, MS,
-        del_mz
+        del_mz,
+        weighted = weighted_fit
       )
     }
 
@@ -640,7 +653,7 @@ for(task in 1:nrow(Tasks)) {
       mu   = NA
       fwhm = NA
       area = NA
-
+      warning = TRUE
     } else {
       v   = summary(res)$parameters[,"Estimate"]
       peakPars = getPars(res)
@@ -684,7 +697,6 @@ for(task in 1:nrow(Tasks)) {
       val = pars,
       gPars = gParsLoc
     )
-
     if(save_figures) {
       png(
         filename = paste0(figRepo, tag, '_', targets[it,1], '.png'),
