@@ -1,20 +1,25 @@
 # User configuration params ####
-taskTable = 'list_of_files_Viet.csv'
+taskTable = 'list_of_files_Viet_total.csv'
 tgTable = 'list_of_targets_Plasma_Viet.csv'
 filter_results = TRUE
 fwhm_min = 0.5
 fwhm_max = 1.5
 area_min = 10
 save_figures = TRUE
+plot_maps = FALSE
 weighted_fit = FALSE
+refine_CV0 = TRUE
+const_fwhm = 0.6
 fit_dim = 2     # Fit 2D peaks
 fallback = TRUE # Fallback on 1D fit if 2D fails
 dmz = 1.0       # Width of mz window around
                 # exact mz for signal averaging
-dCV = 2.0       # Width of CV window around
+dCV = 1.2       # Width of CV window around
                 # reference CV for peak fit
 
 # Code Setup ####
+options(warn=0)
+
 # Install packages if necessary
 ## CRAN packages
 libs <- c('xtable','mixtools','inlmisc',
@@ -64,7 +69,7 @@ sink(file ='./sessionInfo.txt')
 print(sessionInfo(), locale=FALSE)
 sink()
 
-## Functions
+# Functions ####
 peak_shape = function(x,p) {
   if(length(p)==3)
     p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
@@ -90,6 +95,7 @@ plotPeak = function(
 
   mzlim = c(mz1,mz2)
   CVlim = range(CV)
+  CVlimf = range(CVf)
 
   # Expose gPars list
   for (n in names(gPars))
@@ -129,6 +135,8 @@ plotPeak = function(
       )
       contour(CVf, mzLoc, p, col = cols_tr2[5], add=TRUE)
     }
+    rect(CVlimf[1],mz1,CVlimf[2],mz2,
+         col = cols_tr[4], border=NA)
   }
 
   if(!is.na(leg))
@@ -160,6 +168,8 @@ plotPeak = function(
     ylab = 'a.u.'
   )
   title(main = 'Mean CV profile', line = 0.5)
+  rect(CVlimf[1],-100,CVlimf[2],ylim[2]*1.2,
+       col = cols_tr[4], border=NA)
 
   ## 2.1 Gaussian fit
   if(!any(is.na(v)))
@@ -253,9 +263,11 @@ plotMaps = function(
 fit1D <- function(
   mz0, CV0,
   dmz, dCV,
-  mz, cv, MS,
+  mz, CV, MS,
   del_mz,
-  weighted = FALSE
+  weighted = FALSE,
+  const_fwhm = FALSE,
+  refine_CV0 = FALSE
 ) {
 
   # Select mz window
@@ -271,6 +283,14 @@ fit1D <- function(
   CV1 = CV0 - dCV/2
   CV2 = CV0 + dCV/2
   selCV = CV >= CV1 & CV <= CV2
+
+  if(refine_CV0){
+    im = which.max(mMStot[selCV])
+    CV0 = CV[selCV][im]
+    CV1 = CV0 - dCV/2
+    CV2 = CV0 + dCV/2
+    selCV = CV >= CV1 & CV <= CV2
+  }
   CVf = CV[selCV]
 
   # Refine mz window
@@ -283,21 +303,74 @@ fit1D <- function(
 
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
 
-  # plot(mz[selMz],MS[which.max(mMStot),selMz])
-
   # Normal fit
   mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
+  weights = rep(1,length(mMS))
+  if(weighted){ # Poisson
+    weights = 1 / mMS
+    vm = min(mMS[mMS>0])
+    weights[!is.finite(weights)] = 1 / vm
+  }
+
+  # First pass
+  lower = NULL
+  start = c(
+    mu    = CVf[which.max(mMS)],
+    sigma = 0.6/2.355,
+    k     = max(mMS)
+  )
+  upper = NULL
+  if(!is.na(const_fwhm)) {
+    lower = c(
+      mu  = CV0 - dCV/10,
+      sigma  = 0.999*const_fwhm/2.355,
+      k   = 0.5*max(mMS)
+    )
+    start = c(
+      mu    = CVf[which.max(mMS)],
+      sigma = const_fwhm/2.355,
+      k     = max(mMS)
+    )
+    lower = c(
+      mu  = CV0 + dCV/10,
+      sigma  = 1.001*const_fwhm/2.355,
+      k   = 1.5*max(mMS)
+    )
+  }
+
   res = try(
     nls(
       mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
-      start = c(
-        mu    = CVf[which.max(mMS)],
-        sigma = 0.7,
-        k     = max(mMS)
-      )
+      start = start,
+      lower = lower,
+      upper = upper,
+      algorithm = 'port',
+      weights = weights,
+      control = list(tol=1e-5,warnOnly=TRUE)
     ),
     silent = TRUE
   )
+
+  if(class(res) != 'try-error') {
+    if(res$convergence != 0) {
+      # Attempt second pass from pass1 optimum
+      start = as.list(coef(summary(res))[,"Estimate"])
+      res = try(
+        nls(
+          mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
+          start = start,
+          lower = lower,
+          upper = upper,
+          algorithm = 'port',
+          weights = weights,
+          control = list(tol=1e-5)
+        ),
+        silent = TRUE
+      )
+    }
+    # if(class(res) != 'try-error')
+    #   print(cbind(lower,coef(summary(res))[,"Estimate"],upper))
+  }
 
   return(
     list(
@@ -314,9 +387,11 @@ fit1D <- function(
 fit2D <- function(
   mz0, CV0,
   dmz, dCV,
-  mz, cv, MS,
+  mz, CV, MS,
   del_mz,
-  weighted = FALSE
+  weighted = FALSE,
+  const_fwhm = FALSE,
+  refine_CV0 = FALSE
 ) {
 
   # Select mz window
@@ -332,6 +407,14 @@ fit2D <- function(
   CV1 = CV0 - dCV/2
   CV2 = CV0 + dCV/2
   selCV = CV >= CV1 & CV <= CV2
+
+  if(refine_CV0){
+    im = which.max(mMStot[selCV])
+    CV0 = CV[selCV][im]
+    CV1 = CV0 - dCV/2
+    CV2 = CV0 + dCV/2
+    selCV = CV >= CV1 & CV <= CV2
+  }
   CVf = CV[selCV]
 
   # Refine mz window
@@ -342,7 +425,6 @@ fit2D <- function(
   mz1 = mz0 - dmz/2 # min mz for averaging
   mz2 = mz0 + dmz/2 # max mz
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-
 
   MSloc = MS[selCV, selMz]
   mzLoc = mz[selMz]
@@ -360,23 +442,81 @@ fit2D <- function(
     weights[!is.finite(weights)] = 1 / vm
   }
 
+  # First pass
+  lower = NULL
+  start = c(
+    mx  = x[which.max(z)],
+    sx  = 0.2,
+    my  = y[which.max(z)],
+    sy  = 0.6/2.355,
+    rho = 0,
+    k  = max(z)
+  )
+  upper = NULL
+  if(!is.na(const_fwhm)) {
+    lower = c(
+      mx  = x[which.max(z)]-dmz/2,
+      sx  = 0.05,
+      my  = CV0 - dCV/10,
+      sy  = 0.8*const_fwhm/2.355,
+      rho = -1,
+      k   = 0.5*max(z)
+    )
+    start = c(
+      mx  = x[which.max(z)],
+      sx  = 0.2,
+      my  = CV0,
+      sy  = const_fwhm/2.355,
+      rho = 0,
+      k  = max(z)
+    )
+    upper = c(
+      mx  = x[which.max(z)]+dmz/2,
+      sx  = 0.7,
+      my  = CV0 + dCV/10,
+      sy  = 1.2*const_fwhm/2.355,
+      rho = 1,
+      k   = 1.5*max(z)
+    )
+  }
+
   res = try(
     nls(
       z ~ k*exp(-0.5/(1-rho^2) * (
         (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
-        2*rho*(x-mx)*(y-my)/(sx*sy))),
-      start = c(
-        mx  = x[which.max(z)],
-        sx  = 0.7,
-        my  = y[which.max(z)],
-        sy  = 0.4,
-        rho = 0,
-        k  = max(z)
-      ),
-      weights = weights
+          2*rho*(x-mx)*(y-my)/(sx*sy))),
+      start = start,
+      lower = lower,
+      upper = upper,
+      algorithm = 'port',
+      weights = weights,
+      control = list(tol=1e-5,warnOnly=TRUE)
     ),
     silent = TRUE
   )
+
+  if(class(res) != 'try-error') {
+    if(res$convergence != 0) {
+      # Attempt second pass from pass1 optimum
+      start = as.list(coef(summary(res))[,"Estimate"])
+      res = try(
+        nls(
+          z ~ k*exp(-0.5/(1-rho^2) * (
+            (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
+              2*rho*(x-mx)*(y-my)/(sx*sy))),
+          start = start,
+          lower = lower,
+          upper = upper,
+          algorithm = 'port',
+          weights = weights,
+          control = list(tol=1e-5)
+        ),
+        silent = TRUE
+      )
+    }
+    # if(class(res) != 'try-error')
+    #   print(cbind(lower,coef(summary(res))[,"Estimate"],upper))
+  }
 
   return(
     list(
@@ -459,7 +599,11 @@ getPars = function(res){
   return(out)
 }
 
-# Check sanity of user params ####
+# Check sanity of parameters ####
+assertive::assert_all_are_existing_files(dataRepo)
+assertive::assert_all_are_existing_files(figRepo)
+assertive::assert_all_are_existing_files(tabRepo)
+
 file = paste0(dataRepo, tgTable)
 assertive::assert_all_are_existing_files(file)
 
@@ -486,7 +630,6 @@ assertive::assert_is_numeric(dCV)
 if(!assertive::is_positive(dCV))
   stop(paste0('Erreur: dCV =',dCV,' should be positive'))
 
-
 # Get targets ####
 file = paste0(dataRepo, tgTable)
 targets = read.table(
@@ -504,7 +647,7 @@ empty = rep(NA,nrow(targets))
 if(!'CV_ref' %in% colnames(targets))
   targets = cbind(targets,CV_ref=empty)
 
-# Get list of tasks ####
+# Get tasks list ####
 file = paste0(dataRepo, taskTable)
 Tasks = read.table(
   file = file,
@@ -618,27 +761,33 @@ for(task in 1:nrow(Tasks)) {
       fitOut = fit2D(
         mz0, CV0,
         dmz, dCV,
-        mz, cv, MS,
+        mz, CV, MS,
         del_mz,
-        weighted = weighted_fit
+        weighted = weighted_fit,
+        refine_CV0 = refine_CV0,
+        const_fwhm = const_fwhm
       )
       if(class(fitOut$res) == 'try-error' & fallback)
         # 1D fit of peaks
         fitOut = fit1D(
           mz0, CV0,
           dmz, dCV,
-          mz, cv, MS,
+          mz, CV, MS,
           del_mz,
-          weighted = weighted_fit
+          weighted = weighted_fit,
+          refine_CV0 = refine_CV0,
+          const_fwhm = const_fwhm
         )
     } else {
       # 1D fit of peaks
       fitOut = fit1D(
         mz0, CV0,
         dmz, dCV,
-        mz, cv, MS,
+        mz, CV, MS,
         del_mz,
-        weighted = weighted_fit
+        weighted = weighted_fit,
+        refine_CV0 = refine_CV0,
+        const_fwhm = const_fwhm
       )
     }
 
@@ -728,23 +877,8 @@ for(task in 1:nrow(Tasks)) {
   }
 
   # Global Heat maps
-  mex = targets[,'m/z_exact']
-  plotMaps(
-    mz, CV, MS,
-    mex = mex,
-    leg = 'log10(MS)',
-    tag = tag,
-    mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
-    CVlim = range(CV),
-    logz = TRUE,
-    gPars = gParsLoc
-  )
-  if(save_figures) {
-    png(
-      filename = paste0(figRepo, tag,
-                        '_heatmaps.png'),
-      width    = 2*gPars$reso,
-      height   =   gPars$reso )
+  if(plot_maps) {
+    mex = targets[,'m/z_exact']
     plotMaps(
       mz, CV, MS,
       mex = mex,
@@ -753,13 +887,30 @@ for(task in 1:nrow(Tasks)) {
       mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
       CVlim = range(CV),
       logz = TRUE,
-      gPars = gPars
+      gPars = gParsLoc
     )
-    dev.off()
+    if(save_figures) {
+      png(
+        filename = paste0(figRepo, tag,
+                          '_heatmaps.png'),
+        width    = 2*gPars$reso,
+        height   =   gPars$reso )
+      plotMaps(
+        mz, CV, MS,
+        mex = mex,
+        leg = 'log10(MS)',
+        tag = tag,
+        mzlim = c(min(mex)-5*dmz,max(mex)+5*dmz),
+        CVlim = range(CV),
+        logz = TRUE,
+        gPars = gPars
+      )
+      dev.off()
+    }
   }
 
-  # res = resu[!is.na(resu[,'CV']),]
-  print(resu)
+  res = resu[!is.na(resu[,'CV']),]
+  print(res)
 
   # Save results
   write.csv(resu,file = paste0(tabRepo,tag,'_results.csv'))
