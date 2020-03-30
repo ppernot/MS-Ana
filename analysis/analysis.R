@@ -9,7 +9,7 @@ save_figures = TRUE
 plot_maps = FALSE
 weighted_fit = FALSE
 refine_CV0 = TRUE
-const_fwhm = 0.6
+const_fwhm = 0.7
 fit_dim = 2     # Fit 2D peaks
 fallback = TRUE # Fallback on 1D fit if 2D fails
 dmz = 1.0       # Width of mz window around
@@ -266,7 +266,7 @@ fit1D <- function(
   mz, CV, MS,
   del_mz,
   weighted = FALSE,
-  const_fwhm = FALSE,
+  const_fwhm = NA,
   refine_CV0 = FALSE
 ) {
 
@@ -390,7 +390,7 @@ fit2D <- function(
   mz, CV, MS,
   del_mz,
   weighted = FALSE,
-  const_fwhm = FALSE,
+  const_fwhm = NA,
   refine_CV0 = FALSE
 ) {
 
