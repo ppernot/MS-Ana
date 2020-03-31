@@ -1,14 +1,14 @@
 #
-# Check repeatability of analysis
+# Quantification
 #
 # User configuration params ####
 taskTable  = 'list_of_files_Francis_PP.csv'
 quantTable = 'list_of_targets_Francis_quantification.csv'
-filter_results = TRUE
-fwhm_min = 0.5
-fwhm_max = 1.5
-area_min = 10
-const_fwhm = 0.7
+# filter_results = TRUE
+# fwhm_min = 0.5
+# fwhm_max = 1.5
+# area_min = 10
+# const_fwhm = 0.7
 # save_figures = TRUE
 
 # Code Setup ####
@@ -76,17 +76,17 @@ assertive::assert_all_are_existing_files(file)
 file = paste0(dataRepo, quantTable)
 assertive::assert_all_are_existing_files(file)
 
-assertive::assert_is_numeric(fwhm_min)
-if(!assertive::is_positive(fwhm_min))
-  stop(paste0('Erreur: fwhm_min =',fwhm_min,' should be positive'))
-
-assertive::assert_is_numeric(fwhm_max)
-if(!assertive::is_positive(fwhm_max))
-  stop(paste0('Erreur: fwhm_max =',fwhm_max,' should be positive'))
-
-assertive::assert_is_numeric(area_min)
-if(!assertive::is_positive(area_min))
-  stop(paste0('Erreur: area_min =',area_min,' should be positive'))
+# assertive::assert_is_numeric(fwhm_min)
+# if(!assertive::is_positive(fwhm_min))
+#   stop(paste0('Erreur: fwhm_min =',fwhm_min,' should be positive'))
+#
+# assertive::assert_is_numeric(fwhm_max)
+# if(!assertive::is_positive(fwhm_max))
+#   stop(paste0('Erreur: fwhm_max =',fwhm_max,' should be positive'))
+#
+# assertive::assert_is_numeric(area_min)
+# if(!assertive::is_positive(area_min))
+#   stop(paste0('Erreur: area_min =',area_min,' should be positive'))
 
 # Get tasks list & results ####
 file = paste0(dataRepo, taskTable)
@@ -141,83 +141,113 @@ quant = read.table(
 )
 targets = quant$Name
 
+# Quantification ####
+qres = data.frame(
+  Name = NA,
+  Int  = NA,
+  Slo  = NA,
+  Slo0 = NA,
+  LOD  = NA)
+pdf(
+  file=paste0(figRepo,'quantif.pdf'),
+  width = 7,
+  height = 10)
+par(mfrow=c(3,2),
+    mar = mar,
+    pty = pty,
+    mgp = mgp,
+    tcl = tcl)
 for(it in 1:length(targets)) {
-  name = targets[it]
-  sel = D$Name == name
+  AA = targets[it]
+  IS = quant[it, 'IS']
 
-  par(mfrow = c(1,3), mar = mar)
+  selAA = D$Name == AA
+  if(sum(selAA) == 0)
+    next
 
-  # CV vs. dilution
-  x = D[sel, 'dilu']
-  y = D[sel, 'CV']
-  dy = 2 * D[sel, 'u_CV']
-  y0 = D[sel, 'CV_ref']
+  diluAA  = D[selAA, 'dilu']
+  aireAA  = D[selAA, 'Area']
+  daireAA = D[selAA, 'u_Area']
+
+  selIS = D$Name == IS
+
+  diluIS  = D[selIS, 'dilu']
+  aireIS  = D[selIS, 'Area']
+  daireIS = D[selIS, 'u_Area']
+
+  if (any(diluAA != diluIS))
+    stop('Pb...')
+
+  cAA = quant[it, 'CAA_Plasma'] +
+    quant[it, 'CAA_ref'] * diluAA
+  cIS = quant[it, 'CIS_ref']
+
+  ratio = aireAA / aireIS
+  dratio = ratio * sqrt(
+      daireAA^2/aireAA^2 +
+      daireIS^2/aireIS^2
+  )
+  selr = !is.na(ratio)
+
+  cr = cAA[selr]/cIS
+  ratio = ratio[selr]
+  dratio = dratio[selr]
+
   plot(
-    x,
-    y,
+    cr,
+    ratio,
     pch = 16,
     col = cols[5],
     log = '',
-    xlab = 'Dilution',
-    ylab = 'CV',
-    main = name
+    xlab = 'cAA/cIS', xlim = c(0,max(cr)),
+    ylab = 'AA/IS', ylim = c(0,max(ratio)),
+    main = paste(AA,'/',IS)
   )
-  segments(x, y - dy, x, y + dy, col = cols[5])
-  lines(x, y0, lwd = 2, col = cols[3])
-  text(min(x),y0[1],'CV_ref',adj=0,cex=0.75)
-  cm = sort(unique(x))
-  ym = c()
-  for (i in 1:length(cm))
-    ym[i] = mean(y[x == cm[i]], na.rm = TRUE)
-  lines(cm, ym, lty = 2, col = cols[2])
-  grid()
+  segments(cr, ratio - 2 * dratio,
+           cr, ratio + 2 * dratio,
+           col = cols[5])
 
-  # FWHM vs. dilution
-  x = D[sel, 'dilu']
-  y = D[sel, 'FWHM']
-  dy = 2 * D[sel, 'u_FWHM']
-  plot(
-    x,
-    y,
-    pch = 16,
-    col = cols[5],
-    log = '',
-    xlab = 'Dilution',
-    ylab = 'FWHM',
-    main = name,
-    ylim = c(0.5, 0.9)
-  )
-  segments(x, y - dy, x, y + dy, col = cols[5])
-  rect(0.8*min(x),0.8*const_fwhm,
-       1.2*max(x),1.2*const_fwhm,
-       col = cols_tr[4], border=NA)
-  grid()
-
-  # Area vs. dilution
-  x = D[sel, 'dilu']
-  y = D[sel, 'Area']
-  dy = 2 * D[sel, 'u_Area']
-  plot(
-    x,
-    y,
-    pch = 16,
-    col = cols[5],
-    log = '',
-    xlab = 'Dilution',
-    ylab = 'Area',
-    main = name
-  )
-  segments(x, y - dy, x, y + dy, col = cols[5])
-  abline(h=area_min, lwd= 2, col=cols[2])
-  io = order(x)
-  xo = x[io]
-  yo = y[io]
-  reg = lm(yo~xo, weights = 1/(dy[io]/2)^2)
-  p = predict(reg, interval = 'conf')
-  matlines(xo[!is.na(yo)],p,
+  # Linear regression
+  io = order(cr)
+  xo = cr[io]
+  yo = ratio[io]
+  reg = lm(yo~xo, weights = 1/(dratio[io]/2)^2)
+  x1 = c(0,xo)
+  p = predict(reg,
+              newdata = list(xo = x1),
+              interval = 'conf')
+  matlines(x1[!is.na(p[,1])],p,
            col = cols[4],
            lty=c(1,2,2))
+
+  # LInear regression with intercept at 0
+  reg0 = lm(yo~0+xo, weights = 1/(dratio[io]/2)^2)
+  p0 = predict(reg0, ,
+               newdata = list(xo = x1),
+               interval = 'conf')
+  matlines(x1[!is.na(p0[,1])],p0,
+           col = cols[2],
+           lty=c(1,2,2))
   grid()
+
+  # LOD from https://sites.chem.utoronto.ca/chemistry/coursenotes/analsci/stats/LimDetect.html
+  Sxy = sqrt(sum(residuals(reg)^2)/length(xo-2))
+  Clod = 3*Sxy/coefficients(reg)[2]
+  abline(v=Clod , col=cols[3], lty = 2)
+  mtext('LOD',side=3,col=cols[3],at=Clod, cex=0.75)
+
+  # Accumulate results
+  qres = rbind(
+    qres,
+    c(AA,
+      signif(coefficients(reg),3),
+      signif(coefficients(reg0),3),
+      signif(Clod,3)
+    )
+  )
 }
+dev.off()
+
+write.csv(qres[-1,],file=paste0(tabRepo,'quantif.csv'))
 
 # END ####
