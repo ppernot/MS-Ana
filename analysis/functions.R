@@ -1,4 +1,117 @@
+# Code Setup ####
+options(warn=0)
+
+# Install packages if necessary
+## CRAN packages
+libs <- c('xtable','mixtools','inlmisc',
+          'rlist','repmis','assertive')
+for (lib in libs) {
+  if (!require(lib, character.only = TRUE, quietly = TRUE)) {
+    install.packages(
+      lib,
+      dependencies = TRUE,
+      repos = 'https://cran.irsn.fr'
+    )
+  }
+}
+
+## Load packages
+repmis::LoadandCite(libs) # ,file='../article/packages.bib')
+
+# Set graphical params
+## For PNG figures
+gPars = list(
+  cols     = rev(inlmisc::GetColors(8))[1:7],
+  cols_tr  = rev(inlmisc::GetColors(8, alpha = 0.2))[1:7],
+  cols_tr2 = rev(inlmisc::GetColors(8, alpha = 0.5))[1:7],
+  pty      = 's',
+  mar      = c(3,3,3,.5),
+  mgp      = c(2,.75,0),
+  tcl      = -0.5,
+  lwd      = 4.0,
+  cex      = 4.0,
+  cex.leg  = 0.7,
+  reso     = 1200  # (px) base resolution for png figs
+)
+## For local plots
+gParsLoc = gPars
+gParsLoc$cex = 1
+gParsLoc$lwd = 2
+
+# Expose gPars list
+for (n in names(gPars))
+  assign(n, rlist::list.extract(gPars, n))
+
+# Define Data and Results repositories
+dataRepo = '../data/'
+figRepo  = '../results/figs/'
+tabRepo  = '../results/tables/'
+
+# Default user tag
+userTag  = ''
+
+sink(file ='./sessionInfo.txt')
+print(sessionInfo(), locale=FALSE)
+sink()
+
 # Functions ####
+makeTag <- function(CVTable, msTable, userTag) {
+  date =
+    strsplit(
+      strsplit(
+        CVTable,
+        split = ' '
+      )[[1]][2],
+      split = '-'
+    )[[1]][1]
+
+  tag = paste0(
+    date,'_',
+    strsplit(msTable, split='\\.')[[1]][1],
+    ifelse(userTag=='','','_'),userTag
+  )
+}
+readTasksFile <- function(file) {
+ read.table(
+    file = file,
+    header = TRUE,
+    sep = ',',
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+gatherResults <- function(Tasks, tabRepo, userTag) {
+  D = NULL
+  for(task in 1:nrow(Tasks)) {
+
+    msTable = Tasks[task,'MS_file']
+    CVTable = Tasks[task,'DMS_file']
+    # dilu    = Tasks[task,'dilu']
+
+    # Build tag
+    tag = makeTag(CVTable, msTable, userTag)
+
+    M = read.csv(
+      file = paste0(tabRepo,tag,'_results.csv'),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+    # M = cbind(M,dilu)
+    D = rbind(D,M)
+  }
+  return(D)
+}
+readTargetsFile <- function(file) {
+  read.table(
+    file = file,
+    header = TRUE,
+    sep = ';',
+    dec = '.',
+    check.names = FALSE,
+    fill = TRUE,
+    stringsAsFactors = FALSE
+  )
+}
 peak_shape = function(x,p) {
   if(length(p)==3)
     p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
@@ -164,18 +277,21 @@ plotPeak = function(
 
     ## 2.1 Gaussian fit
     if(!any(is.na(v))) {
-      lines(xmod,vmod,col = cols[2])
-      abline(v = v[1], col = cols[6])
+      lines(xmod,vmod,col = cols[6])
+      abline(v = v[1], col = cols[2],lty=2)
     }
+
+    if (!is.na(mex))
+      abline(v = mex, lty = 1, col = cols[2])
 
     ## Add fit results
     if (!is.na(val))
-      legend(
-        x=mzlim[1], y=ylim[2],
+      legend('right',
+        # x=mzlim[1], y=ylim[2],
         yjust = 1.75,
         title  = val,
         legend = '',
-        # inset  = 0.12,
+        # inset  = 0.05,
         bty    = 'n',
         cex    = 0.8)
 
@@ -629,7 +745,7 @@ fit2D <- function(
     )
   )
 }
-getPars1D <- function(res) {
+getPars1D <- function(res, fit_dim) {
   # Get best params and uncertainty
   v   = summary(res)$parameters[,"Estimate"]   # Best params
   u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
@@ -641,18 +757,42 @@ getPars1D <- function(res) {
   u_fwhm = 2.355 * u_v[2]
   area   = sqrt(2*pi) * abs(v[2]) * v[3]
   u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
-  return(
-    list(
-      v      = v,
-      u_v    = u_v,
-      mu     = mu,
-      u_mu   = u_mu,
-      fwhm   = fwhm,
-      u_fwhm = u_fwhm,
-      area   = area,
-      u_area = u_area
+
+  if (fit_dim == 1)
+    return(
+      list(
+        v         = v,
+        u_v       = u_v,
+        mzopt     = NA,
+        u_mz      = NA,
+        cvopt     = mu,
+        u_cv      = u_mu,
+        fwhm_mz   = NA,
+        u_fwhm_mz = NA,
+        fwhm_cv   = fwhm,
+        u_fwhm_cv = u_fwhm,
+        area      = area,
+        u_area    = u_area
+      )
     )
-  )
+  else
+    return(
+      list(
+        v         = v,
+        u_v       = u_v,
+        mzopt     = mu,
+        u_mz      = u_mu,
+        cvopt     = NA,
+        u_cv      = NA,
+        fwhm_mz   = fwhm,
+        u_fwhm_mz = u_fwhm,
+        fwhm_cv   = NA,
+        u_fwhm_cv = NA,
+        area      = area,
+        u_area    = u_area
+      )
+    )
+
 }
 getPars2D <- function(res) {
   # Get best params and uncertainty
@@ -660,38 +800,46 @@ getPars2D <- function(res) {
   u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
 
   # Transform params to quantities of interest
-  mu     = v['my']
-  u_mu   = u_v['my']
-  fwhm   = 2.355 * abs(v['sy'])
-  u_fwhm = 2.355 * u_v['sy']
-  area   = 2*pi * abs(v['sx'] * v['sy'] * v['k'])
-  u_area = area * sqrt((u_v['sx']/v['sx'])^2 +
+  mu1     = v['mx']
+  u_mu1   = u_v['mx']
+  mu2     = v['my']
+  u_mu2   = u_v['my']
+  fwhm1   = 2.355 * abs(v['sx'])
+  u_fwhm1 = 2.355 * u_v['sx']
+  fwhm2   = 2.355 * abs(v['sy'])
+  u_fwhm2 = 2.355 * u_v['sy']
+  area    = 2*pi * abs(v['sx'] * v['sy'] * v['k']) # ignore rho
+  u_area  = area * sqrt((u_v['sx']/v['sx'])^2 +
                          (u_v['sy']/v['sy'])^2 +
                          (u_v['k']/v['k'])^2
   )
 
   return(
     list(
-      v      = v,
-      u_v    = u_v,
-      mu     = mu,
-      u_mu   = u_mu,
-      fwhm   = fwhm,
-      u_fwhm = u_fwhm,
-      area   = area,
-      u_area = u_area
+      v         = v,
+      u_v       = u_v,
+      mzopt     = mu1,
+      u_mz      = u_mu1,
+      cvopt     = mu2,
+      u_cv      = u_mu2,
+      fwhm_mz   = fwhm1,
+      u_fwhm_mz = u_fwhm1,
+      fwhm_cv   = fwhm2,
+      u_fwhm_cv = u_fwhm2,
+      area      = area,
+      u_area    = u_area
     )
   )
 
 }
-getPars = function(res){
+getPars = function(res, fit_dim){
 
   v   = summary(res)$parameters[,"Estimate"]
 
-  if(length(v)==3)
-    out = getPars1D(res)
-  else
+  if (fit_dim == 2)
     out = getPars2D(res)
+  else
+    out = getPars1D(res, fit_dim)
 
   return(out)
 }

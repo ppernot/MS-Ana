@@ -1,77 +1,49 @@
+#===============================================
+# 2020_07_16 [PP]
+# - Added 2 new colums to results table
+#   to store m/z and u_m/z from 2D fit
+# - Integrate fast method (fit_dim = 0)
+# - Added data path management
+# - Added optional tag (userTag):
+#   presently defined by fit_dim value,
+#   to avoid overwriting of results files
+#   when trying different fit_dim options
+#===============================================
+#
+## Load packages and functions ####
+source('functions.R')
+
 # User configuration params ####
-taskTable = 'list_of_files_Viet_total.csv'
-tgTable = 'list_of_targets_Plasma_Viet.csv'
+
+taskTable = 'list_of_files_Francis_PP.csv'
+tgTable   = 'list_of_targets_Plasma_Francis_CVref.csv'
+
 filter_results = TRUE
-fwhm_min = 0.5
-fwhm_max = 1.5
-area_min = 10
-save_figures = TRUE
-plot_maps = FALSE
+fwhm_mz_min = 0.1
+fwhm_mz_max = 0.5
+fwhm_cv_min = 0.5
+fwhm_cv_max = 1.5
+area_min    = 10
+
+save_figures = FALSE
+plot_maps    = FALSE
+
+fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
+
 weighted_fit = FALSE
-refine_CV0 = TRUE
-const_fwhm = 0.7
-fit_dim = 2     # Fit 2D peaks
-fallback = TRUE # Fallback on 1D fit if 2D fails
+refine_CV0   = TRUE
+const_fwhm   = ifelse(fit_dim == 0,NA,0.7)
+
 dmz = 1.0       # Width of mz window around
                 # exact mz for signal averaging
 dCV = 1.2       # Width of CV window around
                 # reference CV for peak fit
 
-# Code Setup ####
-options(warn=0)
+debug = FALSE    # Stops after first task
 
-# Install packages if necessary
-## CRAN packages
-libs <- c('xtable','mixtools','inlmisc',
-          'rlist','repmis','assertive')
-for (lib in libs) {
-  if (!require(lib, character.only = TRUE, quietly = TRUE)) {
-    install.packages(
-      lib,
-      dependencies = TRUE,
-      repos = 'https://cran.univ-paris1.fr'
-    )
-  }
-}
+userTag = paste0('fit_dim=',fit_dim)
 
-## Load functions
-source('functions.R')
-
-## Load packages
-repmis::LoadandCite(libs) # ,file='../article/packages.bib')
-
-# Set graphical params
-## For PNG figures
-gPars = list(
-  cols     = rev(inlmisc::GetColors(8))[1:7],
-  cols_tr  = rev(inlmisc::GetColors(8, alpha = 0.2))[1:7],
-  cols_tr2 = rev(inlmisc::GetColors(8, alpha = 0.5))[1:7],
-  pty      = 's',
-  mar      = c(3,3,3,.5),
-  mgp      = c(2,.75,0),
-  tcl      = -0.5,
-  lwd      = 4.0,
-  cex      = 4.0,
-  cex.leg  = 0.7,
-  reso     = 1200  # (px) base resolution for png figs
-)
-## For local plots
-gParsLoc = gPars
-gParsLoc$cex = 1
-gParsLoc$lwd = 2
-
-# Expose gPars list
-for (n in names(gPars))
-  assign(n, rlist::list.extract(gPars, n))
-
-# Define Data and Results repositories
-dataRepo = '../data/'
-figRepo  = '../results/figs/'
-tabRepo  = '../results/tables/'
-
-sink(file ='./sessionInfo.txt')
-print(sessionInfo(), locale=FALSE)
-sink()
 
 # Check sanity of parameters ####
 assertive::assert_all_are_existing_files(dataRepo)
@@ -122,14 +94,7 @@ if(!'CV_ref' %in% colnames(targets))
   targets = cbind(targets,CV_ref=empty)
 
 # Get tasks list ####
-file = paste0(dataRepo, taskTable)
-Tasks = read.table(
-  file = file,
-  header = TRUE,
-  sep = ',',
-  check.names = FALSE,
-  stringsAsFactors = FALSE
-)
+Tasks = readTasksFile(paste0(dataRepo, taskTable))
 
 # Check that files exist before proceeding
 files = paste0(dataRepo,Tasks[,'MS_file'])
@@ -139,28 +104,23 @@ files = paste0(dataRepo,Tasks[,'DMS_file'])
 assertive::assert_all_are_existing_files(files)
 
 # Loop over tasks ####
+dilu = NA
 for(task in 1:nrow(Tasks)) {
 
   msTable = Tasks[task,'MS_file']
   CVTable = Tasks[task,'DMS_file']
+  if('dilu' %in% colnames(Tasks))
+    dilu    = Tasks[task,'dilu']
+  dataPath = ''
+  if('path' %in% colnames(Tasks))
+    if(!is.na(Tasks[task,'path']))
+      dataPath = Tasks[task,'path']
 
   # Build tag
-  ## Extract date from CVTable
-  date =
-    strsplit(
-      strsplit(
-        CVTable,
-        split = ' '
-      )[[1]][2],
-      split = '-'
-    )[[1]][1]
-  tag = paste0(
-    date,'_',
-    strsplit(msTable, split='\\.')[[1]][1]
-  )
+  tag = makeTag(CVTable, msTable, userTag)
 
   # Get MS ####
-  file = paste0(dataRepo, msTable)
+  file = paste0(dataRepo, dataPath, msTable)
   MS0 = read.table(
     file = file,
     header = FALSE,
@@ -174,7 +134,9 @@ for(task in 1:nrow(Tasks)) {
   nchan    = n_del_mz[1]
   del_mz   = n_del_mz[2]
   mz       = range_mz[1] + (0:(nchan - 1)) * del_mz
-  MS       = as.matrix(MS0[, -(1:8)], ncol = length(mz), byrow = FALSE)
+  MS       = as.matrix(MS0[, -(1:8)],
+                       ncol = length(mz),
+                       byrow = FALSE)
 
   # Get CV ####
   file = paste0(dataRepo, CVTable)
@@ -206,18 +168,29 @@ for(task in 1:nrow(Tasks)) {
 
   time = time[selt]
   MS   = MS[selt,]
-  MS       = apply(MS, 2, rev) # reverse column to conform with CV
+  MS   = apply(MS, 2, rev) # reverse column to conform with CV
   CV   = CV[selCV]
   nCV  = length(CV)
 
   ## Initialize results table
-  resu = cbind(targets,empty,empty,empty,empty,empty,empty,empty)
+  resu = cbind(
+    targets,
+    empty,empty,
+    empty,empty,
+    empty,empty,
+    empty,empty,
+    empty,empty,
+    empty,empty,
+    empty)
   colnames(resu) = c(
     colnames(targets),
-    'CV','u_CV',
-    'FWHM','u_FWHM',
-    'Area','u_Area',
-    'FitDim'
+    'm/z',     'u_m/z',
+    'CV',      'u_CV',
+    'FWHM_m/z','u_FWHM_m/z',
+    'FWHM_CV', 'u_FWHM_CV',
+    'Area',    'u_Area',
+    'fit_dim',  'dilu',
+    'tag'
   )
   xic = cbind(time,rev(CV))
   colnames(xic) = c('time','CV')
@@ -241,7 +214,8 @@ for(task in 1:nrow(Tasks)) {
         refine_CV0 = refine_CV0,
         const_fwhm = const_fwhm
       )
-      if(class(fitOut$res) == 'try-error' & fallback)
+      dimfit = 2
+      if(class(fitOut$res) == 'try-error' & fallback) {
         # 1D fit of peaks
         fitOut = fit1D(
           mz0, CV0,
@@ -252,8 +226,11 @@ for(task in 1:nrow(Tasks)) {
           refine_CV0 = refine_CV0,
           const_fwhm = const_fwhm
         )
-    } else {
-      # 1D fit of peaks
+        dimfit = 1
+      }
+
+    } else if (fit_dim == 1) {
+      # 1D fit of peaks; fixed m/z
       fitOut = fit1D(
         mz0, CV0,
         dmz, dCV,
@@ -263,6 +240,18 @@ for(task in 1:nrow(Tasks)) {
         refine_CV0 = refine_CV0,
         const_fwhm = const_fwhm
       )
+      dimfit = 1
+
+    } else {
+      # 1D fit of peak; fixed CV
+      fitOut = fit1D_MS(
+        mz0, CV0,
+        dmz, dCV,
+        mz, CV, MS,
+        weighted = weighted_fit,
+        const_fwhm = const_fwhm
+      )
+      dimfit = 0
     }
 
     for (n in names(fitOut))
@@ -272,21 +261,35 @@ for(task in 1:nrow(Tasks)) {
 
     if(class(res)=="try-error") {
       # Fit failed => no fit params
-      v    = NA
-      mu   = NA
-      fwhm = NA
-      area = NA
+      v       = NA
+      mzopt   = NA
+      cvopt   = NA
+      fwmh_mz = NA
+      fwhm_cv = NA
+      area    = NA
       warning = TRUE
+
     } else {
       v   = summary(res)$parameters[,"Estimate"]
-      peakPars = getPars(res)
+      peakPars = getPars(res,dimfit)
       for (n in names(peakPars))
         assign(n,rlist::list.extract(peakPars,n))
 
       # Quality control
-      if(
-        filter_results &
-        (fwhm <= fwhm_min | fwhm >= fwhm_max | area <= area_min)
+      if(filter_results &
+         (
+           ifelse(
+             !is.na(fwhm_cv),
+             fwhm_cv <= fwhm_cv_min | fwhm_cv >= fwhm_cv_max,
+             FALSE
+           ) |
+           ifelse(
+             !is.na(fwhm_mz),
+             fwhm_mz <= fwhm_mz_min | fwhm_mz >= fwhm_mz_max,
+             FALSE
+           ) |
+           area <= area_min
+         )
       ) {
         warning = TRUE
         # Do not store results
@@ -294,22 +297,35 @@ for(task in 1:nrow(Tasks)) {
       } else {
         warning = FALSE
         # Store in results table
-        resu[it,5]  = signif(mu,4)
-        resu[it,6]  = signif(u_mu,2)
-        resu[it,7]  = signif(fwhm,3)
-        resu[it,8]  = signif(u_fwhm,2)
-        resu[it,9]  = signif(area,3)
-        resu[it,10] = signif(u_area,2)
-        resu[it,11] = ifelse(length(v)==3, 1, 2)
+        resu[it,'m/z']        = signif(mzopt,6)
+        resu[it,'u_m/z']      = signif(u_mz,2)
+        resu[it,'CV']         = signif(cvopt,4)
+        resu[it,'u_CV']       = signif(u_cv,2)
+        resu[it,'FWHM_m/z']   = signif(fwhm_mz,3)
+        resu[it,'u_FWHM_m/z'] = signif(u_fwhm_mz,2)
+        resu[it,'FWHM_CV']    = signif(fwhm_cv,3)
+        resu[it,'u_FWHM_CV']  = signif(u_fwhm_cv,2)
+        resu[it,'Area']       = signif(area,3)
+        resu[it,'u_Area']     = signif(u_area,2)
       }
     }
+    resu[it,'fit_dim'] = dimfit
+    resu[it,'dilu'] = dilu
+    resu[it,'tag'] = tag
 
     # Plot data and fit results
     pars = paste0(
       ifelse (warning, '** WARNING **\n','') ,
-      'CV = ',      signif(mu,4),
-      '\n FWHM = ', signif(fwhm,3),
-      '\n Area = ', signif(area,3)
+      ifelse(dimfit > 0,
+             '',
+             paste0('m/z = ', signif(mzopt,6),'\n')),
+      ifelse(dimfit == 0,
+             '',
+             paste0('CV = ', signif(cvopt,4),'\n')),
+      ifelse(dimfit > 0,
+             paste0('FWHM = ', signif(fwhm_cv,3),'\n'),
+             paste0('FWHM = ', signif(fwhm_mz,3),'\n')),
+      'Area = ', signif(area,3)
     )
     plotPeak(
       mz, CV, MS,
@@ -318,11 +334,12 @@ for(task in 1:nrow(Tasks)) {
       leg = targets[it,'Name'],
       tag = tag,
       val = pars,
+      type = ifelse(dimfit==0,'m/z','CV'),
+      CV0 = CV0,
       gPars = gParsLoc
     )
     if(save_figures) {
-      png(
-        filename = paste0(figRepo, tag, '_', targets[it,1], '.png'),
+      png(filename = paste0(figRepo, tag, '_', targets[it, 1], '.png'),
         width    = 2*gPars$reso,
         height   =   gPars$reso )
       plotPeak(
@@ -332,6 +349,8 @@ for(task in 1:nrow(Tasks)) {
         leg = targets[it,'Name'],
         tag = tag,
         val = pars,
+        type = ifelse(dimfit==0,'m/z','CV'),
+        CV0 = CV0,
         gPars = gPars
       )
       dev.off()
@@ -343,7 +362,10 @@ for(task in 1:nrow(Tasks)) {
     colnames(xic) = c(nam0,targets[it,1])
 
     # Save Fit file
-    fit = peak_shape(CV,v)
+    if(fit_dim == 0)
+      fit = peak_shape(mz,v)
+    else
+      fit = peak_shape(CV,v)
     nam0 = colnames(xfi)
     xfi = cbind(xfi,rev(fit))
     colnames(xfi) = c(nam0,targets[it,1])
@@ -383,16 +405,15 @@ for(task in 1:nrow(Tasks)) {
     }
   }
 
-  res = resu[!is.na(resu[,'CV']),]
-  print(res)
+  # res = resu[!is.na(resu[,'CV']),]
+  # print(res)
 
   # Save results
-  write.csv(resu,file = paste0(tabRepo,tag,'_results.csv'))
+  write.csv(resu,file = paste0(tabRepo, tag, '_results.csv'))
+  write.csv(xic,file  = paste0(tabRepo, tag, '_XIC.csv'))
+  write.csv(xfi,file  = paste0(tabRepo, tag, '_fit.csv'))
 
-  write.csv(xic,file = paste0(tabRepo, tag, '_XIC.csv'))
-
-  write.csv(xfi,file = paste0(tabRepo, tag, '_fit.csv'))
-
+  if(debug) stop()
 }
 
 # END ####
