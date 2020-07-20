@@ -56,13 +56,25 @@ assertive::assert_all_are_existing_files(file)
 file = paste0(dataRepo, taskTable)
 assertive::assert_all_are_existing_files(file)
 
-assertive::assert_is_numeric(fwhm_min)
-if(!assertive::is_positive(fwhm_min))
-  stop(paste0('Erreur: fwhm_min =',fwhm_min,' should be positive'))
+assertive::assert_is_numeric(fwhm_mz_min)
+if(!assertive::is_positive(fwhm_mz_min))
+  stop(paste0('Erreur: fwhm_mz_min =',
+              fwhm_mz_min,' should be positive'))
 
-assertive::assert_is_numeric(fwhm_max)
-if(!assertive::is_positive(fwhm_max))
-  stop(paste0('Erreur: fwhm_max =',fwhm_max,' should be positive'))
+assertive::assert_is_numeric(fwhm_mz_max)
+if(!assertive::is_positive(fwhm_mz_max))
+  stop(paste0('Erreur: fwhm_mz_max =',
+              fwhm_mz_max,' should be positive'))
+
+assertive::assert_is_numeric(fwhm_cv_min)
+if(!assertive::is_positive(fwhm_cv_min))
+  stop(paste0('Erreur: fwhm_cv_min =',
+              fwhm_cv_min,' should be positive'))
+
+assertive::assert_is_numeric(fwhm_cv_max)
+if(!assertive::is_positive(fwhm_cv_max))
+  stop(paste0('Erreur: fwhm_cv_max =',
+              fwhm_cv_max,' should be positive'))
 
 assertive::assert_is_numeric(area_min)
 if(!assertive::is_positive(area_min))
@@ -76,20 +88,10 @@ assertive::assert_is_numeric(dCV)
 if(!assertive::is_positive(dCV))
   stop(paste0('Erreur: dCV =',dCV,' should be positive'))
 
+
 # Get targets ####
-file = paste0(dataRepo, tgTable)
-targets = read.table(
-  file = file,
-  header = TRUE,
-  sep = ';',
-  dec = '.',
-  check.names = FALSE,
-  fill = TRUE,
-  stringsAsFactors = FALSE
-)
-
+targets = readTargetsFile(paste0(dataRepo, tgTable))
 empty = rep(NA,nrow(targets))
-
 if(!'CV_ref' %in% colnames(targets))
   targets = cbind(targets,CV_ref=empty)
 
@@ -97,7 +99,11 @@ if(!'CV_ref' %in% colnames(targets))
 Tasks = readTasksFile(paste0(dataRepo, taskTable))
 
 # Check that files exist before proceeding
-files = paste0(dataRepo,Tasks[,'MS_file'])
+if('path' %in% colnames(Tasks)) {
+  files = paste0(dataRepo,Tasks[,'path'],Tasks[,'MS_file'])
+} else {
+  files = paste0(dataRepo,Tasks[,'MS_file'])
+}
 assertive::assert_all_are_existing_files(files)
 
 files = paste0(dataRepo,Tasks[,'DMS_file'])
@@ -264,7 +270,7 @@ for(task in 1:nrow(Tasks)) {
       v       = NA
       mzopt   = NA
       cvopt   = NA
-      fwmh_mz = NA
+      fwhm_mz = NA
       fwhm_cv = NA
       area    = NA
       warning = TRUE
