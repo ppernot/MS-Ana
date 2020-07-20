@@ -80,8 +80,8 @@ for(it in 1:length(targets)) {
 
   ratio = aireAA / aireIS
   dratio = ratio * sqrt(
-    daireAA^2/aireAA^2 +
-      daireIS^2/aireIS^2
+    daireAA^2 / aireAA^2 +
+    daireIS^2 / aireIS^2
   )
   D[selAA,'ratio']   = signif(ratio,5)
   D[selAA,'u_ratio'] = signif(dratio,2)
@@ -94,6 +94,7 @@ for(it in 1:length(targets)) {
     y = D[selAA, ylab]
     dy = 2 * D[selAA, paste0('u_',ylab)]
     y0 = D[selAA, rlab]
+    ylim = range(c(y-dy,y+dy))
 
     plot(
       x,
@@ -103,8 +104,10 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = ylab,
+      ylim = ylim,
       main = AA
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     lines(x, y0, lwd = 2, col = cols[3])
     text(min(x),y0[1],'CV_ref',adj=0,cex=0.75)
@@ -113,13 +116,14 @@ for(it in 1:length(targets)) {
     for (i in 1:length(cm))
       ym[i] = mean(y[x == cm[i]], na.rm = TRUE)
     lines(cm, ym, lty = 2, col = cols[2])
-    grid()
+    box()
 
     # FWHM vs. dilution
     ftag = ifelse(fit_dim==0,'FWHM_m/z','FWHM_CV')
     x = D[selAA, 'dilu']
     y = D[selAA, ftag]
     dy = 2 * D[selAA, paste0('u_',ftag)]
+    ylim = range(c(y-dy,y+dy))
     plot(
       x,
       y,
@@ -128,18 +132,21 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = ftag,
+      ylim = ylim,
       main = AA
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     rect(0.8*min(x),0.8*const_fwhm,
          1.2*max(x),1.2*const_fwhm,
          col = cols_tr[4], border=NA)
-    grid()
+    box()
 
     # Area vs. dilution
     x = D[selAA, 'dilu']
     y = D[selAA, 'Area']
     dy = 2 * D[selAA, 'u_Area']
+    ylim = range(c(y-dy,y+dy))
     plot(
       x,
       y,
@@ -148,19 +155,30 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = 'Area',
+      ylim = ylim,
       main = AA
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     abline(h=area_min, lwd= 2, col=cols[2])
-    io = order(x)
-    xo = x[io]
-    yo = y[io]
-    reg = lm(yo~xo, weights = 1/(dy[io]/2)^2)
-    p = predict(reg, interval = 'conf')
-    matlines(xo[!is.na(yo)],p,
-             col = cols[4],
-             lty=c(1,2,2))
-    grid()
+    w   = 1/dy^2
+    w   = w / sum(w)
+    wm  = weighted.mean(y,w)
+    s2  = var(y)
+    uwm = sqrt( sum(w^2*(s2+dy^2)) )
+    abline(h=c(wm-2*uwm,wm,wm+2*uwm),
+           col = cols[2],
+           lty=c(2,1,2)
+    )
+    # io = order(x)
+    # xo = x[io]
+    # yo = y[io]
+    # reg = lm(yo~xo, weights = 1/(dy[io]/2)^2)
+    # p = predict(reg, interval = 'conf')
+    # matlines(xo[!is.na(yo)],p,
+    #          col = cols[4],
+    #          lty=c(1,2,2))
+    box()
 
     # Ratio vs. dilution
     x = D[selAA, 'dilu']
@@ -178,6 +196,7 @@ for(it in 1:length(targets)) {
       ylim = ylim,
       main = AA
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     w   = 1/dy^2
     w   = w / sum(w)
@@ -188,13 +207,14 @@ for(it in 1:length(targets)) {
            col = cols[2],
            lty=c(2,1,2)
     )
-    grid()
+    box()
 
     # CV vs. dilution
     x = D[selIS, 'dilu']
     y = D[selIS, ylab]
     dy = 2 * D[selIS, paste0('u_',ylab)]
     y0 = D[selIS, rlab]
+    ylim = range(c(y-dy,y+dy))
 
     plot(
       x,
@@ -204,8 +224,10 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = ylab,
+      ylim = ylim,
       main = IS
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     lines(x, y0, lwd = 2, col = cols[3])
     text(min(x),y0[1],'CV_ref',adj=0,cex=0.75)
@@ -214,12 +236,13 @@ for(it in 1:length(targets)) {
     for (i in 1:length(cm))
       ym[i] = mean(y[x == cm[i]], na.rm = TRUE)
     lines(cm, ym, lty = 2, col = cols[2])
-    grid()
+    box()
 
     # FWHM vs. dilution
     x = D[selIS, 'dilu']
     y = D[selIS, ftag]
     dy = 2 * D[selIS, paste0('u_',ftag)]
+    ylim = range(c(y-dy,y+dy))
     plot(
       x,
       y,
@@ -228,18 +251,21 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = 'FWHM',
+      ylim = ylim,
       main = IS
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     rect(0.8*min(x),0.8*const_fwhm,
          1.2*max(x),1.2*const_fwhm,
          col = cols_tr[4], border=NA)
-    grid()
+    box()
 
     # Area vs. dilution
     x = D[selIS, 'dilu']
     y = D[selIS, 'Area']
     dy = 2 * D[selIS, 'u_Area']
+    ylim = range(c(y-dy,y+dy))
     plot(
       x,
       y,
@@ -248,21 +274,55 @@ for(it in 1:length(targets)) {
       log = '',
       xlab = 'Dilution',
       ylab = 'Area',
+      ylim = ylim,
       main = IS
     )
+    grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     abline(h=area_min, lwd= 2, col=cols[2])
-    io = order(x)
-    xo = x[io]
-    yo = y[io]
-    reg = lm(yo~xo, weights = 1/(dy[io]/2)^2)
-    p = predict(reg, interval = 'conf')
-    matlines(xo[!is.na(yo)],p,
-             col = cols[4],
-             lty=c(1,2,2))
-    grid()
+    w   = 1/dy^2
+    w   = w / sum(w)
+    wm  = weighted.mean(y,w)
+    s2  = var(y)
+    uwm = sqrt( sum(w^2*(s2+0.000001*dy^2)) )
+    abline(h=c(wm-2*uwm,wm,wm+2*uwm),
+           col = cols[2],
+           lty=c(2,1,2)
+    )
+    box()
+    # io = order(x)
+    # xo = x[io]
+    # yo = y[io]
+    # reg = lm(yo~xo, weights = 1/(dy[io]/2)^2)
+    # p = predict(reg, interval = 'conf')
+    # matlines(xo[!is.na(yo)],p,
+    #          col = cols[4],
+    #          lty=c(1,2,2))
 
-    plot(x,x,type='n')
+
+    x = D[selAA, 'Area']
+    y = D[selIS, 'Area']
+    dx = 2 * D[selAA, 'u_Area']
+    dy = 2 * D[selIS, 'u_Area']
+    xlim = range(c(x-dx,x+dx))
+    ylim = range(c(y-dy,y+dy))
+    plot(
+      x,
+      y,
+      pch = 16,
+      col = cols[5],
+      log = '',
+      xlab = 'Area AA',
+      ylab = 'Area IS',
+      xlim = xlim,
+      ylim = ylim,
+      main = paste0(IS, ' vs. ',AA)
+    )
+    grid()
+    segments(x - dx, y, x + dx, y, col = cols[5])
+    segments(x, y - dy, x, y + dy, col = cols[5])
+    abline(lm(y~x), col=cols[4])
+    box()
   }
 }
 
