@@ -36,7 +36,7 @@ gPars = list(
 ## For local plots
 gParsLoc = gPars
 gParsLoc$cex = 1
-gParsLoc$lwd = 2
+gParsLoc$lwd = 1.5
 
 # Expose gPars list
 for (n in names(gPars))
@@ -90,9 +90,12 @@ gatherResults <- function(Tasks, tabRepo, userTag) {
 
     # Build tag
     tag = makeTag(CVTable, msTable, userTag)
+    file = paste0(tabRepo,tag,'_results.csv')
+    if(!file.exists(file))
+      stop(paste0('Missing file:',file))
 
     M = read.csv(
-      file = paste0(tabRepo,tag,'_results.csv'),
+      file = file,
       check.names = FALSE,
       stringsAsFactors = FALSE
     )
@@ -114,9 +117,10 @@ readTargetsFile <- function(file) {
 }
 peak_shape = function(x,p) {
   if(length(p)==3)
-    p[3]*exp(-1/2*(x-p[1])^2/p[2]^2)
+    p['A'] / (sqrt(2*pi) * p['sigma'] ) *
+    exp(-1/2*(x-p['mu'])^2/p['sigma']^2)
   else
-    sqrt(2*pi)*p['k']*abs(p['sx']) *
+    p['A'] / (sqrt(2*pi) * p['sy'] ) * # Marginalized on x
     exp(-1/2*(x-p['my'])^2/p['sy']^2)
 }
 plotPeak = function(
@@ -402,33 +406,38 @@ fit1D_MS <- function(
   # First pass
   mu = mzl[which.max(MSl)]
   lower = NULL
+  s2p = sqrt(2*pi)
+  sigma0 = 0.1/2.355
+  A0 = s2p * sigma0 * max(MSl)
   start = c(
     mu    = mu,
-    sigma = 0.1/2.355,
-    k     = max(MSl)
+    sigma = sigma0,
+    A     = A0
   )
   upper = NULL
   if(!is.na(const_fwhm)) {
+    sigma0 = const_fwhm/2.355
+    A0 = s2p * sigma0 * max(MSl)
     lower = c(
-      mu  = mu - dmz,
-      sigma  = 0.999*const_fwhm/2.355,
-      k   = 0.5*max(MSl)
+      mu    = mu - dmz,
+      sigma = 0.999 * sigma0,
+      A     = 0.5 * A0
     )
     start = c(
       mu    = mu,
-      sigma = const_fwhm/2.355,
-      k     = max(MSl)
+      sigma = sigma0,
+      A     = A0
     )
     upper = c(
-      mu  = mu + dmz,
-      sigma  = 1.001*const_fwhm/2.355,
-      k   = 1.5*max(MSl)
+      mu    = mu + dmz,
+      sigma = 1.001 * sigma0,
+      A     = 1.5 * A0
     )
   }
 
   res = try(
     nls(
-      MSl ~ k*exp(-1/2*(mzl-mu)^2/sigma^2),
+      MSl ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(mzl-mu)^2/sigma^2),
       start = start,
       lower = lower,
       upper = upper,
@@ -445,7 +454,7 @@ fit1D_MS <- function(
       start = as.list(coef(summary(res))[,"Estimate"])
       res = try(
         nls(
-          MSl ~ k*exp(-1/2*(mzl-mu)^2/sigma^2),
+          MSl ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(mzl-mu)^2/sigma^2),
           start = start,
           lower = lower,
           upper = upper,
@@ -527,33 +536,38 @@ fit1D <- function(
 
   # First pass
   lower = NULL
+  s2p = sqrt(2*pi)
+  sigma0 = 0.1/2.355
+  A0 = s2p * sigma0 * max(MSl)
   start = c(
     mu    = CVf[which.max(mMS)],
     sigma = 0.6/2.355,
-    k     = max(mMS)
+    A     = A0
   )
   upper = NULL
   if(!is.na(const_fwhm)) {
+    sigma0 = const_fwhm/2.355
+    A0 = s2p * sigma0 * max(MSl)
     lower = c(
-      mu  = CV0 - dCV/10,
-      sigma  = 0.999*const_fwhm/2.355,
-      k   = 0.5*max(mMS)
+      mu    = CV0 - dCV/10,
+      sigma = 0.999 * sigma0,
+      A     =  0.5 * A0
     )
     start = c(
       mu    = CVf[which.max(mMS)],
-      sigma = const_fwhm/2.355,
-      k     = max(mMS)
+      sigma = sigma0,
+      A     = A0
     )
     upper = c(
-      mu  = CV0 + dCV/10,
-      sigma  = 1.001*const_fwhm/2.355,
-      k   = 1.5*max(mMS)
+      mu    = CV0 + dCV/10,
+      sigma = 1.001 * sigma0,
+      A     = 1.5 * A0
     )
   }
 
   res = try(
     nls(
-      mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
+      mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
       start = start,
       lower = lower,
       upper = upper,
@@ -570,7 +584,7 @@ fit1D <- function(
       start = as.list(coef(summary(res))[,"Estimate"])
       res = try(
         nls(
-          mMS ~ k*exp(-1/2*(CVf-mu)^2/sigma^2),
+          mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
           start = start,
           lower = lower,
           upper = upper,
@@ -656,48 +670,58 @@ fit2D <- function(
   }
 
   # First pass
+  sx0 = 0.2
+  sy0 = 0.6/2.355
+  A0  = 2 * pi * sx0 * sy0 * max(z)
+  maxz = which.max(z)
+
   lower = NULL
   start = c(
-    mx  = x[which.max(z)],
-    sx  = 0.2,
-    my  = y[which.max(z)],
-    sy  = 0.6/2.355,
-    rho = 0,
-    k  = max(z)
+    mx  = x[maxz],
+    sx  = sx0,
+    my  = y[maxz],
+    sy  = sy0,
+    # rho = 0,
+    A   = A0
   )
   upper = NULL
   if(!is.na(const_fwhm)) {
+    sx0 = 0.2
+    sy0 = const_fwhm / 2.355
+    A0  = 2 * pi * sx0 * sy0 * max(z)
     lower = c(
-      mx  = x[which.max(z)]-dmz/2,
-      sx  = 0.05,
-      my  = CV0 - dCV/10,
-      sy  = 0.8*const_fwhm/2.355,
-      rho = -1,
-      k   = 0.5*max(z)
+      mx  = x[maxz] - dmz / 2,
+      sx  = sx0 / 4,
+      my  = CV0 - dCV / 10,
+      sy  = 0.8 * sy0,
+      # rho = -1,
+      A   = 0.5 * A0
     )
     start = c(
-      mx  = x[which.max(z)],
-      sx  = 0.2,
+      mx  = x[maxz],
+      sx  = sx0,
       my  = CV0,
-      sy  = const_fwhm/2.355,
-      rho = 0,
-      k  = max(z)
+      sy  = sy0,
+      # rho = 0,
+      A   = A0
     )
     upper = c(
-      mx  = x[which.max(z)]+dmz/2,
-      sx  = 0.7,
-      my  = CV0 + dCV/10,
-      sy  = 1.2*const_fwhm/2.355,
-      rho = 1,
-      k   = 1.5*max(z)
+      mx  = x[maxz] + dmz / 2,
+      sx  = 4 * sx0,
+      my  = CV0 + dCV / 10,
+      sy  = 1.2 * sy0,
+      # rho = 1,
+      A   = 1.5 * A0
     )
   }
 
   res = try(
     nls(
-      z ~ k*exp(-0.5/(1-rho^2) * (
-        (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
-          2*rho*(x-mx)*(y-my)/(sx*sy))),
+      z ~ A/(2*pi*sx*sy)*exp(
+        -0.5 * ( (x-mx)^2/sx^2 + (y-my)^2/sy^2 ) ),
+      # z ~ A/(2*pi*sx*sy)*exp(-0.5/(1-rho^2) * (
+      #   (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
+      #     2*rho*(x-mx)*(y-my)/(sx*sy))),
       start = start,
       lower = lower,
       upper = upper,
@@ -714,9 +738,11 @@ fit2D <- function(
       start = as.list(coef(summary(res))[,"Estimate"])
       res = try(
         nls(
-          z ~ k*exp(-0.5/(1-rho^2) * (
-            (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
-              2*rho*(x-mx)*(y-my)/(sx*sy))),
+          z ~ A/(2*pi*sx*sy)*exp(
+            -0.5 * ( (x-mx)^2/sx^2 + (y-my)^2/sy^2 ) ),
+          # z ~ A/(2*pi*sx*sy)*exp(-0.5/(1-rho^2) * (
+          #   (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
+          #     2*rho*(x-mx)*(y-my)/(sx*sy))),
           start = start,
           lower = lower,
           upper = upper,
@@ -751,12 +777,18 @@ getPars1D <- function(res, fit_dim) {
   u_v = summary(res)$parameters[,"Std. Error"] # Uncertainty
 
   # Transform params to quantities of interest
-  mu     = v[1]
-  u_mu   = u_v[1]
-  fwhm   = 2.355 * abs(v[2])
-  u_fwhm = 2.355 * u_v[2]
-  area   = sqrt(2*pi) * abs(v[2]) * v[3]
-  u_area = area * sqrt((u_v[2]/v[2])^2 + (u_v[3]/v[3])^2)
+  mu     = v['mu']
+  u_mu   = u_v['mu']
+  fwhm   = 2.355 * abs(v['sigma'])
+  u_fwhm = 2.355 * u_v['sigma']
+  area   = v['A']
+  u_mu   = u_v['A']
+  # # Account for correlations
+  # grad   = sqrt(2*pi) * c(v['k'], abs(v['sigma']))
+  # V      = vcov(res)[c('sigma','k'),c('sigma','k')]
+  # u_area = sqrt( t(grad) %*%  V %*% grad )
+  # u_area = area * sqrt((u_v['sigma']/v['sigma'])^2 +
+  #                        (u_v['k']/v['k'])^2)
 
   if (fit_dim == 1)
     return(
@@ -808,11 +840,19 @@ getPars2D <- function(res) {
   u_fwhm1 = 2.355 * u_v['sx']
   fwhm2   = 2.355 * abs(v['sy'])
   u_fwhm2 = 2.355 * u_v['sy']
-  area    = 2*pi * abs(v['sx'] * v['sy'] * v['k']) # ignore rho
-  u_area  = area * sqrt((u_v['sx']/v['sx'])^2 +
-                         (u_v['sy']/v['sy'])^2 +
-                         (u_v['k']/v['k'])^2
-  )
+  area    = v['A']
+  u_area  = u_v['A']
+
+  # area    = 2*pi * abs(v['sx'] * v['sy'] * v['k']) # ignore rho
+  # # Account for parameters correlation
+  # V       = vcov(res)[c('sx','sy','k'),c('sx','sy','k')]
+  # grad    = 2*pi * abs(c(v['sy']*v['k'], # All positive
+  #                        v['sx']*v['k'],
+  #                        v['sx']*v['sy']))
+  # u_area = sqrt( t(grad) %*% V %*% grad )
+  # u_area_nc  = area * sqrt((u_v['sx']/v['sx'])^2 +
+  #                      (u_v['sy']/v['sy'])^2 +
+  #                      (u_v['k']/v['k'])^2     )
 
   return(
     list(

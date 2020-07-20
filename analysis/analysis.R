@@ -10,6 +10,9 @@
 #   when trying different fit_dim options
 # 2020_07_20 [PP]
 # - replaced '=' by '_' in userTag (Windows pb.)
+# - reparameterized gaussian with area replacing height
+#   (avoids covariances in estimation of u_area )
+# - suppressed 'rho' param in 2D gaussians
 #===============================================
 #
 ## Load packages and functions ####
@@ -30,7 +33,7 @@ area_min    = 10
 save_figures = TRUE
 plot_maps    = FALSE
 
-fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fit_dim  = 2   # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
 
 weighted_fit = FALSE
