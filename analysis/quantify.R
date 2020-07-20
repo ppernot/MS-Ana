@@ -4,6 +4,8 @@
 #===============================================
 # 2020_07_17 [PP]
 # - Adapt to new naming conventions in analysis.R
+# 2020_07_20 [PP]
+# - replaced '=' by '_' in userTag (Windows pb.)
 #
 #===============================================
 #
@@ -15,7 +17,7 @@ taskTable  = 'list_of_files_Francis_PP.csv'
 quantTable = 'list_of_targets_Francis_quantification.csv'
 
 fit_dim = 2
-userTag = paste0('fit_dim=',fit_dim)
+userTag = paste0('fit_dim_',fit_dim)
 
 # Check sanity of parameters ####
 assertive::assert_all_are_existing_files(dataRepo)

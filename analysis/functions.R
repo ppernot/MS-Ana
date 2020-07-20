@@ -221,7 +221,7 @@ plotPeak = function(
     ylim = range(c(mMS,vmod), na.rm = TRUE, finite = TRUE)
     plot(
       CV, mMStot,
-      type = 'p', pch = 16,
+      type = 'l', #pch = 16,
       col  = cols[4],
       xlim = CVlim,
       xlab = 'CV',
@@ -263,7 +263,7 @@ plotPeak = function(
     )
     plot(
       mzl, MSl,
-      type = 'p', pch = 16,
+      type = 'l', #pch = 16,
       col  = cols[4],
       xlim = mzlim,
       xlab = 'm/z',

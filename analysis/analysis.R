@@ -8,6 +8,8 @@
 #   presently defined by fit_dim value,
 #   to avoid overwriting of results files
 #   when trying different fit_dim options
+# 2020_07_20 [PP]
+# - replaced '=' by '_' in userTag (Windows pb.)
 #===============================================
 #
 ## Load packages and functions ####
@@ -15,8 +17,8 @@ source('functions.R')
 
 # User configuration params ####
 
-taskTable = 'list_of_files_Francis_PP.csv'
-tgTable   = 'list_of_targets_Plasma_Francis_CVref.csv'
+taskTable = 'files_quantification_2019July10.csv'
+tgTable   = 'targets_paper.csv'
 
 filter_results = TRUE
 fwhm_mz_min = 0.1
@@ -25,7 +27,7 @@ fwhm_cv_min = 0.5
 fwhm_cv_max = 1.5
 area_min    = 10
 
-save_figures = FALSE
+save_figures = TRUE
 plot_maps    = FALSE
 
 fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
@@ -42,7 +44,7 @@ dCV = 1.2       # Width of CV window around
 
 debug = FALSE    # Stops after first task
 
-userTag = paste0('fit_dim=',fit_dim)
+userTag = paste0('fit_dim_',fit_dim)
 
 
 # Check sanity of parameters ####

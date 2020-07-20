@@ -5,7 +5,10 @@
 # 2020_07_17 [PP]
 # - Adapt to new naming conventions in analysis.R
 # - Estimate (weighted) means for properties
-#
+# 2020_07_20 [PP]
+# - replaced '=' by '_' in userTag (Windows pb.)
+# - replaced ':' by '_' in date tag...
+# - added ratio vs.dilu fig.
 #===============================================
 #
 ## Load packages and functions ####
@@ -15,11 +18,11 @@ source('functions.R')
 # taskTable = 'list_of_files_AA_2.csv'
 # quantTable = 'listaacom_quantification.csv'
 
-taskTable  = 'list_of_files_Francis_PP.csv'
+taskTable = 'files_quantification_2019July10.csv'
 quantTable = 'targets_paper_quantification.csv'
 
 fit_dim = 2
-userTag = paste0('fit_dim=',fit_dim)
+userTag = paste0('fit_dim_',fit_dim)
 
 const_fwhm = 0.7
 
@@ -84,7 +87,7 @@ for(it in 1:length(targets)) {
   D[selAA,'u_ratio'] = signif(dratio,2)
 
   if(makePlots) {
-    par(mfrow = c(2,3), mar = mar)
+    par(mfrow = c(2,4), mar = mar)
 
     # CV vs. dilution
     x = D[selAA, 'dilu']
@@ -159,6 +162,34 @@ for(it in 1:length(targets)) {
              lty=c(1,2,2))
     grid()
 
+    # Ratio vs. dilution
+    x = D[selAA, 'dilu']
+    y = D[selAA, 'ratio']
+    dy = 2 * D[selAA, 'u_ratio']
+    ylim = range(c(y-dy,y+dy))
+    plot(
+      x,
+      y,
+      pch = 16,
+      col = cols[5],
+      log = '',
+      xlab = 'Dilution',
+      ylab = 'Ratio',
+      ylim = ylim,
+      main = AA
+    )
+    segments(x, y - dy, x, y + dy, col = cols[5])
+    w   = 1/dy^2
+    w   = w / sum(w)
+    wm  = weighted.mean(y,w)
+    s2  = var(y)
+    uwm = sqrt( sum(w^2*(s2+dy^2)) )
+    abline(h=c(wm-2*uwm,wm,wm+2*uwm),
+           col = cols[2],
+           lty=c(2,1,2)
+    )
+    grid()
+
     # CV vs. dilution
     x = D[selIS, 'dilu']
     y = D[selIS, ylab]
@@ -230,6 +261,8 @@ for(it in 1:length(targets)) {
              col = cols[4],
              lty=c(1,2,2))
     grid()
+
+    plot(x,x,type='n')
   }
 }
 
@@ -279,7 +312,7 @@ D = rbind(meanResTab,
           '',
           D)
 
-dataTag = format(Sys.time(), "%Y_%m_%d_%H:%M:%S")
+dataTag = format(Sys.time(), "%Y_%m_%d_%H_%M_%S")
 write.csv(
   D[, -1],
   row.names = FALSE,
