@@ -1,5 +1,6 @@
 # Code Setup ####
-options(warn=0)
+options( warn=0,
+         stringsAsFactors = FALSE )
 
 # Install packages if necessary
 ## CRAN packages
@@ -76,8 +77,7 @@ readTasksFile <- function(file) {
     file = file,
     header = TRUE,
     sep = ',',
-    check.names = FALSE,
-    stringsAsFactors = FALSE
+    check.names = FALSE
   )
 }
 gatherResults <- function(Tasks, tabRepo, userTag) {
@@ -94,11 +94,7 @@ gatherResults <- function(Tasks, tabRepo, userTag) {
     if(!file.exists(file))
       stop(paste0('Missing file:',file))
 
-    M = read.csv(
-      file = file,
-      check.names = FALSE,
-      stringsAsFactors = FALSE
-    )
+    M = read.csv(file = file, check.names = FALSE )
     # M = cbind(M,dilu)
     D = rbind(D,M)
   }
@@ -111,11 +107,10 @@ readTargetsFile <- function(file) {
     sep = ';',
     dec = '.',
     check.names = FALSE,
-    fill = TRUE,
-    stringsAsFactors = FALSE
+    fill = TRUE
   )
 }
-peak_shape = function(x,p) {
+peak_shape = function(x, p) {
   if(length(p)==3)
     p['A'] / (sqrt(2*pi) * p['sigma'] ) *
     exp(-1/2*(x-p['mu'])^2/p['sigma']^2)
@@ -209,15 +204,25 @@ plotPeak = function(
   if (!is.na(mex))
     abline(h = mex, lty = 1, col = cols[2])
 
-  if (type != 'CV')
+  if (type != 'CV') {
     abline(h = v[1], lty = 2, col = cols[2])
+  } else {
+    if( length(v) == 3) {
+      abline(v = v[1], lty = 2, col = cols[2])
+      if(!is.na(mz0))
+        abline(h = mz0, lty = 2, col = cols[2])
+    } else {
+      abline(h = v[1], lty = 2, col = cols[2])
+      abline(v = v[3], lty = 2, col = cols[2])
+    }
+  }
 
   if(type == 'CV') {
     ## 2. CV profile
     xmod = seq(min(CV),max(CV),length.out = 1000)
     if(class(res) != 'try-error') {
       v   = summary(res)$parameters[,"Estimate"]
-      vmod = peak_shape(xmod,v)
+      vmod = peak_shape(xmod, v)
     } else {
       v = NA
       vmod = rep(NA,length(xmod))
@@ -232,13 +237,21 @@ plotPeak = function(
       ylim = ylim,
       ylab = 'a.u.'
     )
-    title(main = 'Mean CV profile', line = 0.5)
+    title(main = 'Integ. CV profile', line = 0.5)
     rect(CVlimf[1],-100,CVlimf[2],ylim[2]*1.2,
          col = cols_tr[4], border=NA)
 
     ## 2.1 Gaussian fit
-    if(!any(is.na(v)))
-      lines(xmod,vmod,col = cols[2])
+    if(!any(is.na(v))) {
+      lines(xmod, vmod, col = cols[6])
+      if(length(v) == 3)
+        abline(v = v[1], lty = 2, col = cols[2])
+      else
+        abline(v = v[3], lty = 2, col = cols[2])
+    }
+
+    if (!is.na(CV0))
+      abline(v = CV0, lty = 1, col = cols[2])
 
     ## Add fit results
     if (!is.na(val))
@@ -252,11 +265,12 @@ plotPeak = function(
         cex    = 0.8)
 
   } else {
+
     ## 2. MS profile
     xmod = seq(mz1,mz2,length.out = 1000)
     if(class(res) != 'try-error') {
       v   = summary(res)$parameters[,"Estimate"]
-      vmod = peak_shape(xmod,v)
+      vmod = peak_shape(xmod, v)
     } else {
       v = NA
       vmod = rep(NA,length(xmod))
@@ -276,13 +290,11 @@ plotPeak = function(
       yaxs = 'i'
     )
     title(main = 'MS profile', line = 0.5)
-    # rect(CVlimf[1],-100,CVlimf[2],ylim[2]*1.2,
-    #      col = cols_tr[4], border=NA)
 
     ## 2.1 Gaussian fit
     if(!any(is.na(v))) {
-      lines(xmod,vmod,col = cols[6])
-      abline(v = v[1], col = cols[2],lty=2)
+      lines(xmod, vmod, col = cols[6])
+      abline(v = v[1], col = cols[2], lty = 2)
     }
 
     if (!is.na(mex))
@@ -538,7 +550,7 @@ fit1D <- function(
   lower = NULL
   s2p = sqrt(2*pi)
   sigma0 = 0.1/2.355
-  A0 = s2p * sigma0 * max(MSl)
+  A0 = s2p * sigma0 * max(mMS)
   start = c(
     mu    = CVf[which.max(mMS)],
     sigma = 0.6/2.355,
@@ -547,7 +559,7 @@ fit1D <- function(
   upper = NULL
   if(!is.na(const_fwhm)) {
     sigma0 = const_fwhm/2.355
-    A0 = s2p * sigma0 * max(MSl)
+    A0 = s2p * sigma0 * max(mMS)
     lower = c(
       mu    = CV0 - dCV/10,
       sigma = 0.999 * sigma0,
@@ -779,10 +791,10 @@ getPars1D <- function(res, fit_dim) {
   # Transform params to quantities of interest
   mu     = v['mu']
   u_mu   = u_v['mu']
-  fwhm   = 2.355 * abs(v['sigma'])
+  fwhm   = 2.355 * v['sigma']
   u_fwhm = 2.355 * u_v['sigma']
   area   = v['A']
-  u_mu   = u_v['A']
+  u_area = u_v['A']
   # # Account for correlations
   # grad   = sqrt(2*pi) * c(v['k'], abs(v['sigma']))
   # V      = vcov(res)[c('sigma','k'),c('sigma','k')]
@@ -836,9 +848,9 @@ getPars2D <- function(res) {
   u_mu1   = u_v['mx']
   mu2     = v['my']
   u_mu2   = u_v['my']
-  fwhm1   = 2.355 * abs(v['sx'])
+  fwhm1   = 2.355 * v['sx']
   u_fwhm1 = 2.355 * u_v['sx']
-  fwhm2   = 2.355 * abs(v['sy'])
+  fwhm2   = 2.355 * v['sy']
   u_fwhm2 = 2.355 * u_v['sy']
   area    = v['A']
   u_area  = u_v['A']
@@ -872,14 +884,9 @@ getPars2D <- function(res) {
   )
 
 }
-getPars = function(res, fit_dim){
-
-  v   = summary(res)$parameters[,"Estimate"]
-
-  if (fit_dim == 2)
-    out = getPars2D(res)
+getPars = function(res, dimfit){
+  if (dimfit == 2)
+    getPars2D(res)
   else
-    out = getPars1D(res, fit_dim)
-
-  return(out)
+    getPars1D(res, dimfit)
 }

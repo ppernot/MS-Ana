@@ -9,6 +9,7 @@
 # - replaced '=' by '_' in userTag (Windows pb.)
 # - replaced ':' by '_' in date tag...
 # - added ratio vs.dilu fig.
+# - added correl. graph for areas AA vs. IS
 #===============================================
 #
 ## Load packages and functions ####

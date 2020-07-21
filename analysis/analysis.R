@@ -10,9 +10,11 @@
 #   when trying different fit_dim options
 # 2020_07_20 [PP]
 # - replaced '=' by '_' in userTag (Windows pb.)
-# - reparameterized gaussian with area replacing height
+# - reparameterized gaussians with area replacing height
 #   (avoids covariances in estimation of u_area )
 # - suppressed 'rho' param in 2D gaussians
+# 2020_07_21 [PP]
+# - corrected typo in calculation of u_area in getPars1D
 #===============================================
 #
 ## Load packages and functions ####
@@ -33,7 +35,7 @@ area_min    = 10
 save_figures = TRUE
 plot_maps    = FALSE
 
-fit_dim  = 2   # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
 
 weighted_fit = FALSE
@@ -159,9 +161,6 @@ for(task in 1:nrow(Tasks)) {
   )
   CV  = rev(CV0[, 4]) # We want increasing CVs
 
-  # tCV = CV0[, 15] / 1000 / 60 # Convertit msec to minutes
-  # tCV = rev(tCV - tCV[1])
-
   ## Ensure CV & MS tables conformity
   t0   = Tasks[task,'t0']
   it   = which.min(abs(time - t0))
@@ -205,11 +204,16 @@ for(task in 1:nrow(Tasks)) {
   )
   xic = cbind(time,rev(CV))
   colnames(xic) = c('time','CV')
-  xfi = cbind(time,rev(CV))
-  colnames(xfi) = c('time','CV')
+  if( fit_dim == 0) {
+    xfi = cbind(1:length(mz),mz)
+    colnames(xfi) = c('index','m/z')
+  } else {
+    xfi = cbind(time,rev(CV))
+    colnames(xfi) = c('time','CV')
+  }
 
   # Loop over targets ####
-  for(it in 1:nrow(targets)) {
+  for( it in 1:nrow(targets) ) {
 
     mz0 = targets[it,'m/z_exact']
     CV0 = targets[it,'CV_ref']
@@ -374,13 +378,14 @@ for(task in 1:nrow(Tasks)) {
 
     # Save Fit file
     if(fit_dim == 0)
-      fit = peak_shape(mz,v)
+      fit = peak_shape(mz, v)
     else
-      fit = peak_shape(CV,v)
+      fit = peak_shape(CV, v)
     nam0 = colnames(xfi)
     xfi = cbind(xfi,rev(fit))
     colnames(xfi) = c(nam0,targets[it,1])
 
+    # if(debug) break
   }
 
   # Global Heat maps
