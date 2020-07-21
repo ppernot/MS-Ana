@@ -795,12 +795,6 @@ getPars1D <- function(res, fit_dim) {
   u_fwhm = 2.355 * u_v['sigma']
   area   = v['A']
   u_area = u_v['A']
-  # # Account for correlations
-  # grad   = sqrt(2*pi) * c(v['k'], abs(v['sigma']))
-  # V      = vcov(res)[c('sigma','k'),c('sigma','k')]
-  # u_area = sqrt( t(grad) %*%  V %*% grad )
-  # u_area = area * sqrt((u_v['sigma']/v['sigma'])^2 +
-  #                        (u_v['k']/v['k'])^2)
 
   if (fit_dim == 1)
     return(
@@ -854,17 +848,6 @@ getPars2D <- function(res) {
   u_fwhm2 = 2.355 * u_v['sy']
   area    = v['A']
   u_area  = u_v['A']
-
-  # area    = 2*pi * abs(v['sx'] * v['sy'] * v['k']) # ignore rho
-  # # Account for parameters correlation
-  # V       = vcov(res)[c('sx','sy','k'),c('sx','sy','k')]
-  # grad    = 2*pi * abs(c(v['sy']*v['k'], # All positive
-  #                        v['sx']*v['k'],
-  #                        v['sx']*v['sy']))
-  # u_area = sqrt( t(grad) %*% V %*% grad )
-  # u_area_nc  = area * sqrt((u_v['sx']/v['sx'])^2 +
-  #                      (u_v['sy']/v['sy'])^2 +
-  #                      (u_v['k']/v['k'])^2     )
 
   return(
     list(

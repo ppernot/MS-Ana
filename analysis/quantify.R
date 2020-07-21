@@ -13,11 +13,13 @@
 source('functions.R')
 
 # User configuration params ####
-taskTable  = 'list_of_files_Francis_PP.csv'
-quantTable = 'list_of_targets_Francis_quantification.csv'
+taskTable  = 'files_quantification_2019July10.csv'
+quantTable = 'targets_paper_quantification.csv'
 
 fit_dim = 2
 userTag = paste0('fit_dim_',fit_dim)
+
+dataTag = format(Sys.time(), "%Y_%m_%d_%H_%M_%S")
 
 # Check sanity of parameters ####
 assertive::assert_all_are_existing_files(dataRepo)
@@ -45,8 +47,14 @@ qres = data.frame(
   Slo  = NA,
   Slo0 = NA,
   LOD  = NA)
+
 pdf(
-  file=paste0(figRepo,'quantif.pdf'),
+  file=paste0(
+    figRepo,
+    dataTag,
+    ifelse(userTag == '', '', '_'),
+    userTag,
+    '_quantif.pdf'),
   width = 7,
   height = 10)
 par(mfrow=c(3,2),
@@ -145,6 +153,13 @@ for(it in 1:length(targets)) {
 }
 dev.off()
 
-write.csv(qres[-1,],file=paste0(tabRepo,'quantif.csv'))
+write.csv(
+  qres[-1,],
+  file = paste0(
+    tabRepo,
+    dataTag,
+    ifelse(userTag == '', '', '_'),
+    userTag,
+    '_quantif.csv'))
 
 # END ####
