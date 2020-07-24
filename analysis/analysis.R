@@ -15,6 +15,8 @@
 # - suppressed 'rho' param in 2D gaussians
 # 2020_07_21 [PP]
 # - corrected typo in calculation of u_area in getPars1D
+# 2020_07_24 [PP]
+# - save ctrl params as metadata
 #===============================================
 #
 ## Load packages and functions ####
@@ -51,6 +53,24 @@ debug = FALSE    # Stops after first task
 
 userTag = paste0('fit_dim_',fit_dim)
 
+ctrlParams = list(
+  userTag        = userTag,
+  taskTable      = taskTable,
+  tgTable        = tgTable,
+  filter_results = filter_results,
+  fwhm_mz_min    = fwhm_mz_min,
+  fwhm_mz_max    = fwhm_mz_max,
+  fwhm_cv_min    = fwhm_cv_min,
+  fwhm_cv_max    = fwhm_cv_max,
+  area_min       = area_min,
+  fit_dim        = fit_dim,
+  fallback       = fallback,
+  weighted_fit   = weighted_fit,
+  refine_CV0     = refine_CV0,
+  const_fwhm     = const_fwhm,
+  dmz            = dmz,
+  dCV            = dCV
+)
 
 # Check sanity of parameters ####
 assertive::assert_all_are_existing_files(dataRepo)
@@ -428,6 +448,15 @@ for(task in 1:nrow(Tasks)) {
   write.csv(resu,file = paste0(tabRepo, tag, '_results.csv'))
   write.csv(xic,file  = paste0(tabRepo, tag, '_XIC.csv'))
   write.csv(xfi,file  = paste0(tabRepo, tag, '_fit.csv'))
+
+  # Metadata
+  rlist::list.save(
+    ctrlParams,
+    file = file.path(
+      tabRepo,
+      paste0(tag,'_ctrlParams.yaml')
+    )
+  )
 
   if(debug) stop()
 }
