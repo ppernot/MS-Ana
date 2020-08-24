@@ -1,6 +1,10 @@
 ---
 title: MS-Ana
-output: github_document
+output: 
+  github_document:
+    toc: true
+    toc_depth: 1
+    pandoc_args: --webtex
 ---
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
@@ -73,6 +77,7 @@ files as `20190517_ C0_AS_DV-1800_1.results`, for example.
 You will also find this _tag_ in the output figures.
 
 ## Table of targets : TGTABLE
+
 The TGTABLE  is a “semicolon” (;) __ TO BE MATCHED WITH TASKTABLE !!!__ delimited text file. 
 It can be edited using excel or Rstudio (safer). 
 Note that you can insert “# “ at the beginning of a line, as in the example below. 
@@ -154,10 +159,12 @@ dCV = 1.2       # Width of CV window around
                 # reference CV for peak fit
 ```
 
-The general formulae of a Gaussian function is
+The general formula of a Gaussian function is
 
-$$G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} 
-  \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right)$$
+\[
+G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} 
+  \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right)
+\]
                       
 where a is the area, $x_0$ is the position of the peak, 
 and $\sigma$ is related to the full width at maximum ($fwhm$) by 

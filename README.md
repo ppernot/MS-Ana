@@ -1,6 +1,12 @@
 MS-Ana
 ================
 
+  - [Purpose](#purpose)
+  - [Organisation](#organisation)
+  - [Input files](#input-files)
+  - [Analysis (last version from 2020, July
+    16)](#analysis-last-version-from-2020-july-16)
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
 
 # Purpose
@@ -102,7 +108,7 @@ Where:
 
 # Analysis (last version from 2020, July 16)
 
-\#\#Purpose
+## Purpose
 
 For each DMS-MS/MS experiment as given in a series in the TASKTABLE
 file, a series of metabolites given in TGTABLE is analyzed. Ultimately,
@@ -156,18 +162,33 @@ within the first line of the `analysis` script as follow:
     dCV = 1.2       # Width of CV window around
                     # reference CV for peak fit
 
-The general formulae of a Gaussian function is
+The general formula of a Gaussian function is
 
-\[G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} 
-  \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right)\]
+  
+![&#10;G(x;a,x\_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma} &#10;
+\\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x\_0}{\\sigma}\\right)^2\\right)&#10;](https://latex.codecogs.com/png.latex?%0AG%28x%3Ba%2Cx_0%2C%5Csigma%29%3D%5Cfrac%7Ba%7D%7B%5Csqrt%7B2%5Cpi%7D%5Csigma%7D%20%0A%20%20%5Cexp%5Cleft%28-%5Cfrac%7B1%7D%7B2%7D%5Cleft%28%5Cfrac%7Bx-x_0%7D%7B%5Csigma%7D%5Cright%29%5E2%5Cright%29%0A
+"
+G(x;a,x_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma} 
+  \\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x_0}{\\sigma}\\right)^2\\right)
+")  
 
-where a is the area, \(x_0\) is the position of the peak, and \(\sigma\)
-is related to the full width at maximum (\(fwhm\)) by
-\(fwhm = 2\sqrt{2\log(2)} \sigma\). Upon the fit process of the data,
-the area is optimized, as well as peak width (\(x_0\) and \(\sigma\)).
-In order to control the fit, limit ranges are defined (`fwhm_mz_min`, …
-`area_min`). When optimizing \(CV\) or \(m/z\) position of the Gaussian
-functions, the window range can be specified using `dCV` and `dmz`.
+where a is the area, ![x\_0](https://latex.codecogs.com/png.latex?x_0
+"x_0") is the position of the peak, and
+![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\\sigma") is
+related to the full width at maximum
+(![fwhm](https://latex.codecogs.com/png.latex?fwhm "fwhm")) by ![fwhm
+= 2\\sqrt{2\\log(2)}
+\\sigma](https://latex.codecogs.com/png.latex?fwhm%20%3D%202%5Csqrt%7B2%5Clog%282%29%7D%20%5Csigma
+"fwhm = 2\\sqrt{2\\log(2)} \\sigma"). Upon the fit process of the data,
+the area is optimized, as well as peak width
+(![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") and
+![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\\sigma")). In
+order to control the fit, limit ranges are defined (`fwhm_mz_min`, …
+`area_min`). When optimizing
+![CV](https://latex.codecogs.com/png.latex?CV "CV") or
+![m/z](https://latex.codecogs.com/png.latex?m%2Fz "m/z") position of the
+Gaussian functions, the window range can be specified using `dCV` and
+`dmz`.
 
 The fit dimension and type is specified using the fit\_dim variable:
 
