@@ -2,7 +2,8 @@ MS-Ana
 ================
 
   - [Purpose](#purpose)
-  - [Organisation](#organisation)
+  - [Data organization](#data-organization)
+  - [Workflow](#workflow)
   - [Input files](#input-files)
       - [`taskTable`](#tasktable)
       - [`tgTable`](#tgtable)
@@ -16,9 +17,9 @@ MS-Ana
 
 # Purpose
 
-# Organisation
+# Data organization
 
-The project is organized into the following folders:
+The project is organized into the following folders structure:
 
     |- analysis :   contains the R scripts 
     |               (analysis.R, checkRep.R, quantify.R)
@@ -45,10 +46,31 @@ The MS and DMS files are expected by default to be in `data`. For
 complex projects, they can be placed in sub-folders of `data`, and their
 paths are given in the input files.
 
+# Workflow
+
+1.  put MS files in `data` folder or a sub-folder
+
+2.  put DMS files in `data`
+
+3.  create `taskTable` and `tgTable` input files in `data` folder
+
+4.  edit and run `analysis.R`
+    
+      - enter the file paths to the `taskTable` and `tgTable` files  
+      - choose the type of peak fit (variable `fit_dim`)
+
+5.  create `quantTable` in `data` folder
+
+6.  edit and run `checkRep.R` and/or `quantify.R`
+    
+      - enter the file paths to the `taskTable` and `quantTable` files  
+      - choose the type of peak fit (variable `fit_dim`) used in the
+        analysis step
+
 # Input files
 
-Three input files (named `taskTable`, `tgTable` and `quantTable`) are
-used by the set of scripts :
+Three input files (formally named `taskTable`, `tgTable` and
+`quantTable`) are used by the set of scripts :
 
 | Script \\ Input | `taskTable` | `tgTable` | `quantTable` |
 | --------------- | ----------- | --------- | ------------ |
@@ -58,12 +80,12 @@ used by the set of scripts :
 
 ## `taskTable`
 
-This file defines the list of MS/DMS files to be analyzed.
+This file defines the list of MS-DMS pairs to be analyzed.
 
-It is a “comma” (,) delimited text file. It can be edited using excel or
-Rstudio (safer).
+It is a “comma” (,) delimited ‘.csv’ file. It can be edited using excel
+or Rstudio (safer).
 
-`taskTable` is structured like this:
+### Structure
 
 | MS\_file                   | DMS\_file                         | t0   | CV0 | dilu | Path                                            |
 | -------------------------- | --------------------------------- | ---- | --- | ---- | ----------------------------------------------- |
@@ -71,13 +93,13 @@ Rstudio (safer).
 
 Where:
 
-  - `C0_AS_DV-1800_1.d.ascii` is an ASCII file, extracted using
-    DATAANALYSIS. So far, only the ESQUIRE data files extracted using
-    the `profile` option can be handled. It is stored in a sub-folder of
-    `data` defined by `Path`.
+  - `MS_file` is an ASCII file, extracted using DATAANALYSIS. So far,
+    only the ESQUIRE data files extracted using the profile`option can
+    be handled. It is stored in`data`or a sub-folder of`data`defined
+    by`Path\`.
 
-  - `Fichier_Dims 20190517-000000.txt` is the corresponding DMS file. It
-    is expected to be in the `data` folder.
+  - `DMS_file` is the corresponding DMS file. It is expected to be in
+    the `data` folder.
 
   - `t0` and `CV0` are used to convert the ESQUIRE time *t* values into
     DMS *CV* values.
@@ -90,36 +112,36 @@ Where:
 
   - `Path` allows you to organize your data within the `../data/`
     folder. Note that the DMS\_files must be in the `../data` folder. In
-    the present example, only the MS\_files are expected to be found in
-    the following folder:
+    the present example, only the MS file is expected to be found in the
+    following folder:
     `../data/Esquire_MSMS_Data/2019_A_Voir/20190517_AA/`.
 
 **Notes**
 
-  - lines starting with “\# “ will be considered as comment lines
+  - lines starting with “\# “ are not processed and treated as comments
+    lines
 
-  - the date from the DMS\_file (here *20190517*)  
-    and the root of the MS file name (here `C0_AS_DV-1800_1`) are
-    combined to tag the output files (*e.g.*, `20190517_
-    C0_AS_DV-1800_1.results`) This *tag* in also used for the output
-    figures.
+  - the date extracted from `DMS_file` (here ‘20190517’)  
+    and the root of the `MS_file` name (here ‘C0\_AS\_DV-1800\_1’) are
+    combined to tag the output figures and tables (*e.g.*, ‘20190517\_
+    C0\_AS\_DV-1800\_1.results’)
 
 ## `tgTable`
 
 This file contains the list of compounds to be analyzed in each MS/DMS
 data set.
 
-It is a “semicolon” (;) \_\_ TO BE MATCHED WITH TASKTABLE \!\!\!\_\_
-delimited text file. It can be edited using excel or Rstudio (safer).
+It is a “semicolon” (;) **TO BE MATCHED WITH TASKTABLE \!\!\!**
+delimited ‘.csv’ file. It can be edited using excel or Rstudio (safer).
 
-`tgTable` is structued like this:
+### Structure
 
 | Name      | m/z\_EExact | m/z\_exact | CV\_ref |
 | --------- | ----------- | ---------- | ------- |
 | \# Gly-AA | C2H5NO2H    | 76         | \-10.7  |
 | Ala-AA    | 90.054955   | 90.1       | \-7.6   |
 
-Where:
+where:
 
   - `Name` is the given name of a metabolite,
 
@@ -127,7 +149,7 @@ Where:
 
   - `m/z_exact` can actually be an approximate *m/z* value
 
-  - `CV_ref` is the expected *CV* value (can be omitted)
+  - `CV_ref` is the expected *CV* value (it can be omitted)
 
 **Notes**
 
@@ -136,7 +158,31 @@ Where:
 
 ## `quantTable`
 
-TBD
+This file contains the list of compounds and internal references used
+for quantification.
+
+It is a “semicolon” (;) **TO BE MATCHED WITH TASKTABLE \!\!\!**
+delimited ‘.csv’ file. It can be edited using excel or Rstudio (safer).
+
+### Structure
+
+| Name      | IS       | CAA\_Plasma | CAA\_ref | CIS\_ref |
+| --------- | -------- | ----------- | -------- | -------- |
+| \# Gly-AA | Gly-13C2 | 11.75       | 1750     | 26.7     |
+| Ala-AA    | Ala-13C2 | 16.15       | 1750     | 20       |
+
+where
+
+  - `Name` is the name of the compound, as used in `tgTable`
+
+  - `IS` is the name of the internal spiking compound. It should also be
+    present in `tgTable`
+
+  - `CAA_Plasma` **???**
+
+  - `CAA_ref` **???**
+
+  - `CIS_ref` **???**
 
 # Scripts
 
@@ -284,39 +330,72 @@ For a 1D fit along m/z, i.e., `fit_dim=0`: ![](article/fig2.png)
 #### Tables
 
 For each experiments/task associated with (MS\_file, DMS\_file), three
-‘.csv’ files are generated.
+‘.csv’ files are generated as `XXX_results.csv`, `XXX_fit.csv` and
+`XXX_XIC.csv`, where ‘XXX’ is a prefix built by concatenation of the DMS
+file date, MS file root and fit\_dim value. For instance, if your data
+are (MS\_file = ‘C0\_AS\_DV-1800\_1.d.ascii’, DMS\_file = ‘Fichier\_Dims
+20190517-000000.txt’), and if ‘fit\_dim=2’,  
+one has XXX=‘20190517\_C0\_AS\_DV-1800\_1\_fit\_dim\_2\_’
 
-If your data are (MS\_file= C0\_AS\_DV-1800\_1.d.ascii, DMS\_file=
-Fichier\_Dims 20190517-000000.txt), and if `fit_dim=2`, you get:
+##### Fit results: `XXX_results.csv`
 
-  - a results file named
-    `20190517_C0_AS_DV-1800_1_fit_dim_2_results.csv` with the following
-    columns:
+  - the first 4 columns are copies of the `tgTable` data:
     
-      - the first 4 columns are copies of the `tgTable` data:
-        
-        | Name | m/z\_EExact | m/z\_exact | CV\_ref |
-        | ---- | ----------- | ---------- | ------- |
+    | Name | m/z\_EExact | m/z\_exact | CV\_ref |
+    | ---- | ----------- | ---------- | ------- |
 
-      - the next 8 columns correspond to the position, width and
-        uncertainty values of the optimized Gaussian in the m/z and CV
-        dimensions (unavailable data are represented by `NA`)
-        
-        | m/z | u\_m/z | CV | u\_CV | FWHM\_m/z | u\_FWHM\_m/z | FWHM\_CV | u\_FWHM\_CV |
-        | --- | ------ | -- | ----- | --------- | ------------ | -------- | ----------- |
+  - the next 8 columns correspond to the position, width and uncertainty
+    values of the optimized Gaussian in the m/z and CV dimensions
+    (unavailable data are represented by `NA`)
+    
+    | m/z | u\_m/z | CV | u\_CV | FWHM\_m/z | u\_FWHM\_m/z | FWHM\_CV | u\_FWHM\_CV |
+    | --- | ------ | -- | ----- | --------- | ------------ | -------- | ----------- |
 
-      - the next 2 columns are the results for the optimized Area
-        values, and corresponding uncertainty.
-        
-        | Area | u\_Area |
-        | ---- | ------- |
+  - the next 2 columns are the results for the optimized Area values,
+    and corresponding uncertainty.
+    
+    | Area | u\_Area |
+    | ---- | ------- |
 
-      - finally, you will find the `fit_dim` value, the `dilu` index,
-        and the `tag` which is a concatenation of date + MS\_filename +
-        fit\_dim that can be used for further sorting of the results.
-        
-        | fit\_dim | dilu | tag |
-        | -------- | ---- | --- |
+  - finally, you will find the `fit_dim` value, the `dilu` index, and
+    the `tag` which is a concatenation of date + MS\_filename + fit\_dim
+    that can be used for further sorting of the results.
+    
+    | fit\_dim | dilu | tag |
+    | -------- | ---- | --- |
+
+##### Fit curves: `XXX_fit.csv`
+
+This file contains the *time*/*CV* gaussian peak profiles for the
+species in `tgTable`.
+
+  - the first three columns are the index, *time* and *CV* abscissae of
+    the profiles
+    
+    | \_ | time | CV |
+    | -- | ---- | -- |
+
+    For 1D fits along the m/z axis (`fit_dim=0`), these columns are
+    
+    | \_ | index | m/z |
+    | -- | ----- | --- |
+
+  - the following columns are headed by the name of the compound and
+    contain the corresponding peak profiles
+
+##### WIC curves: `XXX_XIC.csv`
+
+This file contains the *time*/*CV* gaussian peak profiles for the
+species in `tgTable`.
+
+  - the first three columns are the index, *time* and *CV* abscissae of
+    the profiles
+    
+    | index | time | CV |
+    | ----- | ---- | -- |
+
+  - the following columns are headed by the name of the compound and
+    contain the corresponding peak profiles
 
 ## `checkRep.R`
 
@@ -425,22 +504,24 @@ and ’\_quantif.pdf’
 
 #### Tables
 
-A “.csv” table containing the quantification results, with columns
+A ‘.csv’ table containing the quantification results.
+
+The name of the file is a concatenation of the date, time, `userTag`,
+and ’\_quantif.csv’
+
+##### Structure
 
 | Name | Int | Slo | Slo0 | LOD |
 | ---- | --- | --- | ---- | --- |
 
 where
 
-  - ‘Name’ is the name of the compound
+  - `Name` is the name of the compound
 
-  - ‘Int’ is the value of the intercept
+  - `Int` is the value of the intercept
 
-  - ‘Slo’ is the value of the slope
+  - `Slo` is the value of the slope
 
-  - ‘Slo0’ is the value of the slope with null intercept
+  - `Slo0` is the value of the slope with null intercept
 
-  - ‘LOD’ is the estimated limit of detection
-
-The name of the file is a concatenation of the date, time, `userTag`,
-and ’\_quantif.csv’
+  - `LOD` is the estimated limit of detection
