@@ -37,7 +37,7 @@ area_min    = 10
 save_figures = TRUE
 plot_maps    = FALSE
 
-fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fit_dim  = 0    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
 
 weighted_fit = FALSE
@@ -222,12 +222,15 @@ for(task in 1:nrow(Tasks)) {
     'fit_dim',  'dilu',
     'tag'
   )
-  xic = cbind(time,rev(CV))
-  colnames(xic) = c('time','CV')
+
   if( fit_dim == 0) {
-    xfi = cbind(1:length(mz),mz)
-    colnames(xfi) = c('index','m/z')
+    xic = matrix(mz,ncol=1)
+    colnames(xic) = 'm/z'
+    xfi = matrix(mz,ncol=1)
+    colnames(xfi) = 'm/z'
   } else {
+    xic = cbind(time,rev(CV))
+    colnames(xic) = c('time','CV')
     xfi = cbind(time,rev(CV))
     colnames(xfi) = c('time','CV')
   }
@@ -391,18 +394,18 @@ for(task in 1:nrow(Tasks)) {
       dev.off()
     }
 
-    # Save XIC file
+    # Save XIC and fit file
     nam0 = colnames(xic)
-    xic = cbind(xic,rev(mMStot))
-    colnames(xic) = c(nam0,targets[it,1])
-
-    # Save Fit file
-    if(fit_dim == 0)
+    if(fit_dim == 0) {
+      xic = cbind(xic,mMStot)
       fit = peak_shape(mz, v)
-    else
+      xfi = cbind(xfi,fit)
+    } else {
+      xic = cbind(xic,rev(mMStot))
       fit = peak_shape(CV, v)
-    nam0 = colnames(xfi)
-    xfi = cbind(xfi,rev(fit))
+      xfi = cbind(xfi,rev(fit))
+    }
+    colnames(xic) = c(nam0,targets[it,1])
     colnames(xfi) = c(nam0,targets[it,1])
 
     # if(debug) break
@@ -445,9 +448,15 @@ for(task in 1:nrow(Tasks)) {
   # print(res)
 
   # Save results
-  write.csv(resu,file = paste0(tabRepo, tag, '_results.csv'))
-  write.csv(xic,file  = paste0(tabRepo, tag, '_XIC.csv'))
-  write.csv(xfi,file  = paste0(tabRepo, tag, '_fit.csv'))
+  write.csv(resu,
+            file = paste0(tabRepo, tag, '_results.csv'),
+            row.names = FALSE)
+  write.csv(xic,
+            file  = paste0(tabRepo, tag, '_XIC.csv'),
+            row.names = FALSE)
+  write.csv(xfi,
+            file  = paste0(tabRepo, tag, '_fit.csv'),
+            row.names = FALSE)
 
   # Metadata
   rlist::list.save(

@@ -1,15 +1,23 @@
 ---
-title: MS-Ana
-output: 
+title: MS-Ana 
+author: Philippe MAITRE and Pascal PERNOT
+date: "`r Sys.Date()`"
+output:
   github_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     pandoc_args: --webtex
+  html_document: 
+    number_sections: yes
+    theme: cerulean
+    toc: yes
 ---
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
 
 # Purpose
+
+TBD...
 
 # Data organization 
 
@@ -39,8 +47,8 @@ figRepo  = '../results/figs/'
 tabRepo  = '../results/tables/'
 ```
 The MS and DMS files are expected by default to be in `data`.
-For complex projects, they can be placed in sub-folders of `data`,
-and their paths are given in the input files.
+For complex projects, the MS files can be placed in sub-folders 
+of `data`, and their paths are given in the `taskTable` input file.
  
 # Workflow
 
@@ -51,15 +59,13 @@ and their paths are given in the input files.
 3. create `taskTable` and `tgTable` input files in `data` folder
 
 4. edit and run `analysis.R`    
-    + enter the file paths to the `taskTable` and 
-      `tgTable` files    
+    + enter the file paths to the `taskTable` and `tgTable` files    
     + choose the type of peak fit (variable `fit_dim`)
 
 5. create `quantTable` in  `data` folder
 
 6. edit and run `checkRep.R` and/or `quantify.R`    
-    + enter the file paths to the `taskTable` and 
-      `quantTable` files    
+    + enter the file paths to the `taskTable` and `quantTable` files  
     + choose the type of peak fit (variable `fit_dim`) used
       in the analysis step
 
@@ -92,7 +98,7 @@ Where:
 
 * `MS_file` is an ASCII file, extracted using DATAANALYSIS. 
   So far, only the ESQUIRE data files extracted using the
-  profile` option can be handled.
+  `profile` option can be handled.
   It is stored in `data` or a sub-folder of `data` defined 
   by `Path`.
 
@@ -224,7 +230,7 @@ It turns out that we need three types of fit:
   is the `CV_ref` given in the `tgTable`
 
 
-### Controle variables
+### Control variables
 
 The choice of fit type is set using the `fit_dim` variable. 
 More generally, the important user configuration parameters 
@@ -319,31 +325,60 @@ figRepo  = '../results/figs/'
 tabRepo  = '../results/tables/'
 ```
 
+All output files are prefixed with a string built by concatenation 
+of the DMS file date, MS file root and fit_dim value. 
+For instance, if your data are (MS_file = 'C0_AS_DV-1800_1.d.ascii',
+DMS_file = 'Fichier_Dims 20190517-000000.txt'), and if `fit_dim=2`,  
+one has `prefix = 20190517_C0_AS_DV-1800_1_fit_dim_2_`.
+
 #### Figures 
 
-For each task and target, you get a figure (on the screen and 
-as a file) as shown below.
+For each task and target, a figure is generated (on screen 
+and as a file if `save_figures=TRUE`), showing the 2D location 
+of the peak and its profile, either in the _CV_ dimension
+(`fit-dim =1,2`), or in the _m/z_ dimension (`fit_dim=0`).
+The name of the file is built from the task prefix and the target
+name.
 
-For a 2D fit: 
+__Example of a 2D fit__ 
 ![](article/fig1.png)
 
-For a 1D fit along m/z, i.e., `fit_dim=0`: 
+* On the left panel, the 2D map centered on the peak position.
+  The data are coded in color intensity from pale yellow to red.
+  The pale blue-green area is the _CV_ search range for the
+  peak position.
+  The solid red lines depict the peak position defined
+  by `m/z_exact` and `CV_ref` in the targets table.
+  The dashed red lines correspond to the estimated peak position.
+  If the 2D fit is successful, green contour lines of the peak
+  are displayed.
+  
+* On the right panel, the _CV_ peak profile for data integrated 
+  over _m/z_ (green curve). The blue line is the best fit. 
+  The red lines and pale blue have the same meaning as above.
+  The best-fit paraleters are reported in the graph, with a 
+  warning in case of fit problems.
+
+__Example of a 1D fit along _m/z_ (`fit_dim=0`)__ 
 ![](article/fig2.png)
 
+* Same legend as for the 2D fit, except for the right panel,
+  which represents the _m/z_ profile of the peak.
+  
+  
 #### Tables 
 
 For each experiments/task associated with (MS_file, DMS_file), 
-three comma delimited '.csv' files are generated as `XXX_results.csv`,
-`XXX_fit.csv` and `XXX_XIC.csv`, where 'XXX' is a prefix
-built by concatenation of the DMS file date, MS file
-root and fit_dim value. 
-For instance, if your data are (MS_file = 'C0_AS_DV-1800_1.d.ascii',
-DMS_file = 'Fichier_Dims 20190517-000000.txt'), and if 'fit_dim=2',  
-one has  XXX='20190517_C0_AS_DV-1800_1_fit_dim_2_'
+three comma delimited '.csv' files are generated: 
+`prefix_results.csv`, `prefix_fit.csv` and `prefix_XIC.csv`.
 
-For each task/experiment, a file names `XXX_ctrlParams.yaml`
+For each task, a file names `prefix_ctrlParams.yaml`
 is also generated for reproducibility purpose. 
 It contains the values of all the control variables for this task.
+
+__Notes__
+
+* In output files, the missing data are represented by `NA`s.
 
 ##### Fit results: `XXX_results.csv`
 
@@ -369,36 +404,26 @@ It contains the values of all the control variables for this task.
   |fit_dim|dilu|tag
   |-------|----|---
 
-##### Fit curves: `XXX_fit.csv`
+##### Peak profiles: `XXX_fit.csv` and `XXX_XIC.csv`
 
-This file contains the _time_/_CV_ gaussian peak profiles
-for the species in `tgTable`. 
+The `XXX_XIC.csv` file contains the _time_/_CV_ data profiles 
+integrated over _m/z_ for the compounds in `tgTable` (`fit_dim=1,2`) 
+or the _m/z_ data profile (`fit_dim=0`) for the species in `tgTable`. 
+The `XXX_fit.csv` file contains the corresponding gaussian peak 
+profiles.
 
-+ the first three columns are the index, _time_ and _CV_
++ For `fit_dim=1,2`, the first two columns are the _time_ and _CV_
   abscissae of the profiles
   
-  | _    |time|CV
-  |-----|----|--
-  For 1D fits along the m/z axis (`fit_dim=0`), these 
-  columns are
+  |time|CV
+  |----|--
+  For `fit_dim=0`, the first column is _m/z_
   
-  |  _   |index|m/z
-  |-----|-----|---
-+ the following columns are headed by the name of the compound
-  and contain the corresponding peak profiles
-
-##### XIC curves: `XXX_XIC.csv`
-
-This file contains the _time_/_CV_ data profiles integrated
-over _m/z_ for the species in `tgTable`. 
-
-+ the first three columns are the index, _time_ and _CV_
-  abscissae of the profiles
-  
-  | _   |time|CV
-  |-----|----|--
+  |m/z
+  |---
 + the following columns are headed by the name of the compound
   and contain the corresponding profiles
+
 
 ## `checkRep.R`
 
@@ -409,7 +434,7 @@ The peak parameters are plotted as a function of `dilu`.
 If `dilu` contains the experiment index, `checkRep.R` can be
 used to assess the repeatability of an analysis.
 
-### Controle variables
+### Control variables
 
 The job is defined by a few parameters.
 
@@ -445,14 +470,16 @@ makePlots = TRUE
 
 ### Outputs
 
-#### Figs
+#### Figures
 
 Presently, the plots are generated in the Rstudio interface,
-but no saved to disk.
+but not saved to disk.
 
 #### Tables
 
-A ".csv" table containing all the collected results, with the following additions:
+The name of the file is a concatenation of the date, time,
+`userTag`, and '_compilation.csv'.
+It contains all the collected results, with the following additions:
 
 * two columns containing the ratio of areas for pairs
   of compounds defined in `quantTable`, and its uncertainty
@@ -466,8 +493,6 @@ A ".csv" table containing all the collected results, with the following addition
   Weighted means are estimated, based on the inverse of 
   the squared uncertainties.
 
-The name of the file is a concatenation of the date, time,
-`userTag`, and '_compilation.csv'
 
 ## `quantify.R`
 
@@ -475,7 +500,7 @@ This script is based on the same principle as `checkRep.R`
 (same input files), but aims to estimate the quantification
 parameters, such as the LOD.
 
-### Controle variables
+### Control variables
 
 The job is defined by a few parameters.
 
@@ -504,7 +529,7 @@ userTag = paste0('fit_dim_',fit_dim)
 
 ### Outputs
 
-#### Figs
+#### Figuress
 
 A PDF file is generated, containing the quantification plots
 for all compounds.

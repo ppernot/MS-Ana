@@ -402,7 +402,7 @@ fit1D_MS <- function(
   mz1 = mz0 - dmz/2 # min mz for averaging
   mz2 = mz0 + dmz/2 # max mz
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-  # Integrated CV profile
+  # mz profile
   MStot = MS[iCV,]
   mzl = mz[selMz]
   MSl = MS[iCV, selMz]
@@ -490,7 +490,7 @@ fit1D_MS <- function(
       mz1 = mz1,
       mz2 = mz2,
       CVf = CV,
-      MStot = MStot
+      mMStot = MStot
     )
   )
 }
