@@ -276,7 +276,7 @@ area_min    = 10
 * `plot_maps`: (logical) generate 2D maps summarizing
    the position of fitted targets for a given task
 
-* `fit_dim`: (interger) fit dimension and type:
+* `fit_dim`: (integer) fit dimension and type:
 
     + `fit_dim = 2`: a two_dimensional (_m/z_,_CV_) fit is
        performed
@@ -292,7 +292,7 @@ area_min    = 10
    to the fitted data
 
 * `const_fwhm`: (numerical) value of the peak's fwhm in the 
-  _CV_ dimension (`fit_dim=1,2`) of the _m/z_ dimention 
+  _CV_ dimension (`fit_dim=1,2`) of the _m/z_ dimension 
   (`fit_dim=0`). If `const_fwhm=NA`, the value is optimized,
   otherwise, it is fixed to the specified value.
 
@@ -356,7 +356,7 @@ __Example of a 2D fit__
 * On the right panel, the _CV_ peak profile for data integrated 
   over _m/z_ (green curve). The blue line is the best fit. 
   The red lines and pale blue have the same meaning as above.
-  The best-fit paraleters are reported in the graph, with a 
+  The best-fit parameters are reported in the graph, with a 
   warning in case of fit problems.
 
 __Example of a 1D fit along _m/z_ (`fit_dim=0`)__ 
@@ -529,7 +529,7 @@ userTag = paste0('fit_dim_',fit_dim)
 
 ### Outputs
 
-#### Figuress
+#### Figures
 
 A PDF file is generated, containing the quantification plots
 for all compounds.

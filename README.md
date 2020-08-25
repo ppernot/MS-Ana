@@ -287,7 +287,7 @@ the first line of the `analysis.R` script as follows:
   - `plot_maps`: (logical) generate 2D maps summarizing the position of
     fitted targets for a given task
 
-  - `fit_dim`: (interger) fit dimension and type:
+  - `fit_dim`: (integer) fit dimension and type:
     
       - `fit_dim = 2`: a two\_dimensional (*m/z*,*CV*) fit is performed
     
@@ -303,7 +303,7 @@ the first line of the `analysis.R` script as follows:
     fitted data
 
   - `const_fwhm`: (numerical) value of the peak’s fwhm in the *CV*
-    dimension (`fit_dim=1,2`) of the *m/z* dimention (`fit_dim=0`). If
+    dimension (`fit_dim=1,2`) of the *m/z* dimension (`fit_dim=0`). If
     `const_fwhm=NA`, the value is optimized, otherwise, it is fixed to
     the specified value.
 
@@ -358,7 +358,7 @@ prefix and the target name.
   - On the right panel, the *CV* peak profile for data integrated over
     *m/z* (green curve). The blue line is the best fit. The red lines
     and pale blue have the same meaning as above. The best-fit
-    paraleters are reported in the graph, with a warning in case of fit
+    parameters are reported in the graph, with a warning in case of fit
     problems.
 
 **Example of a 1D fit along *m/z* (`fit_dim=0`)** ![](article/fig2.png)
@@ -523,7 +523,7 @@ The job is defined by a few parameters.
 
 ### Outputs
 
-#### Figuress
+#### Figures
 
 A PDF file is generated, containing the quantification plots for all
 compounds.
