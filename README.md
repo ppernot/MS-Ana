@@ -174,8 +174,8 @@ where:
 This file contains the list of compounds and internal references used
 for quantification.
 
-It is a “semicolon” (;) **TO BE MATCHED WITH TASKTABLE \!\!\!**
-delimited ‘.csv’ file. It can be edited using excel or Rstudio (safer).
+It is a “comma” (,) delimited ‘.csv’ file. It can be edited using excel
+or Rstudio (safer).
 
 ### Structure
 

@@ -110,7 +110,7 @@ readTargetsFile <- function(file) {
     fill = TRUE
   )
   # Backwards separator compatibility
-  if(ncol(M)!=4)
+  if(ncol(M) < 4)
     M = read.table(
       file = file,
       header = TRUE,
