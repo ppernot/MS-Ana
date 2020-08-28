@@ -49,7 +49,7 @@ dmz = 1.0       # Width of mz window around
 dCV = 1.2       # Width of CV window around
                 # reference CV for peak fit
 
-debug = FALSE    # Stops after first task
+debug = TRUE    # Stop after first task
 
 userTag = paste0('fit_dim_',fit_dim)
 
@@ -238,7 +238,7 @@ for(task in 1:nrow(Tasks)) {
   # Loop over targets ####
   for( it in 1:nrow(targets) ) {
 
-    mz0 = targets[it,'m/z_exact']
+    mz0 = targets[it,'m/z_ref']
     CV0 = targets[it,'CV_ref']
 
     if(fit_dim == 2) {
@@ -295,7 +295,7 @@ for(task in 1:nrow(Tasks)) {
     for (n in names(fitOut))
       assign(n,rlist::list.extract(fitOut,n))
 
-    targets[it,'m/z_exact'] = mz0
+    targets[it,'m/z_ref'] = mz0
 
     if(class(res)=="try-error") {
       # Fit failed => no fit params
@@ -368,7 +368,7 @@ for(task in 1:nrow(Tasks)) {
     plotPeak(
       mz, CV, MS,
       fitOut,
-      mex = targets[it,'m/z_exact'],
+      mex = targets[it,'m/z_ref'],
       leg = targets[it,'Name'],
       tag = tag,
       val = pars,
@@ -383,7 +383,7 @@ for(task in 1:nrow(Tasks)) {
       plotPeak(
         mz, CV, MS,
         fitOut,
-        mex = targets[it,'m/z_exact'],
+        mex = targets[it,'m/z_ref'],
         leg = targets[it,'Name'],
         tag = tag,
         val = pars,
@@ -413,7 +413,7 @@ for(task in 1:nrow(Tasks)) {
 
   # Global Heat maps
   if(plot_maps) {
-    mex = targets[,'m/z_exact']
+    mex = targets[,'m/z_ref']
     plotMaps(
       mz, CV, MS,
       mex = mex,

@@ -1,7 +1,7 @@
 MS-Ana
 ================
 Philippe MAITRE and Pascal PERNOT
-2020-08-25
+2020-08-28
 
   - [Purpose](#purpose)
   - [Data organization](#data-organization)
@@ -144,23 +144,23 @@ Where:
 This file contains the list of compounds to be analyzed in each MS/DMS
 data set.
 
-It is a “semicolon” (;) **TO BE MATCHED WITH TASKTABLE \!\!\!**
-delimited ‘.csv’ file. It can be edited using excel or Rstudio (safer).
+It is a “commma” (,) delimited ‘.csv’ file. It can be edited using excel
+or Rstudio (safer).
 
 ### Structure
 
-| Name      | m/z\_EExact | m/z\_exact | CV\_ref |
-| --------- | ----------- | ---------- | ------- |
-| \# Gly-AA | C2H5NO2H    | 76         | \-10.7  |
-| Ala-AA    | 90.054955   | 90.1       | \-7.6   |
+| Name      | Comments  | m/z\_ref | CV\_ref |
+| --------- | --------- | -------- | ------- |
+| \# Gly-AA | C2H5NO2H  | 76       | \-10.7  |
+| Ala-AA    | 90.054955 | 90.1     | \-7.6   |
 
 where:
 
   - `Name` is the given name of a metabolite,
 
-  - `m/z_EExact` is presently not used
+  - `Comments` is presently not used
 
-  - `m/z_exact` can actually be an approximate *m/z* value
+  - `m/z_ref` is the expected (approximate) *m/z* value
 
   - `CV_ref` is the expected *CV* value (it can be omitted)
 
@@ -238,9 +238,8 @@ It turns out that we need three types of fit:
 
   - 2D fit in the (*m/z*, *CV*) space
 
-  - 1D fit in the (*CV*) space, assuming that the *m/z* value is
-    `m/z_exact` as given in `tgTable` **(not exactly: the nearest peak
-    position is used)**
+  - 1D fit in the (*CV*) space, assuming that the *m/z* value is near
+    the `m/z_ref` as given in `tgTable`
 
   - 1D fit in the *m/z* space, assuming that the *CV* value is the
     `CV_ref` given in the `tgTable`
@@ -313,7 +312,7 @@ the first line of the `analysis.R` script as follows:
 
   - `dmz`, `dCV`: (numericals) width of search intervals for the peak’s
     position. These intervals are centered on (possibly refined) values
-    of `m/z_exact` and `CV_ref` given in `tgTable`.
+    of `m/z_ref` and `CV_ref` given in `tgTable`.
 
   - `filter_results`: (logical) filter the recovered peak widths and
     areas. The filtering rejects fwhm values outside of
@@ -350,7 +349,7 @@ prefix and the target name.
   - On the left panel, the 2D map centered on the peak position. The
     data are coded in color intensity from pale yellow to red. The pale
     blue-green area is the *CV* search range for the peak position. The
-    solid red lines depict the peak position defined by `m/z_exact` and
+    solid red lines depict the peak position defined by `m/z_ref` and
     `CV_ref` in the targets table. The dashed red lines correspond to
     the estimated peak position. If the 2D fit is successful, green
     contour lines of the peak are displayed.
@@ -384,8 +383,8 @@ variables for this task.
 
   - the first 4 columns are copies of the `tgTable` data:
     
-    | Name | m/z\_EExact | m/z\_exact | CV\_ref |
-    | ---- | ----------- | ---------- | ------- |
+    | Name | Comments | m/z\_ref | CV\_ref |
+    | ---- | -------- | -------- | ------- |
 
   - the next 8 columns correspond to the position, width and uncertainty
     values of the optimized Gaussian in the m/z and CV dimensions

@@ -101,14 +101,29 @@ gatherResults <- function(Tasks, tabRepo, userTag) {
   return(D)
 }
 readTargetsFile <- function(file) {
-  read.table(
+  M = read.table(
     file = file,
     header = TRUE,
-    sep = ';',
+    sep = ',',
     dec = '.',
     check.names = FALSE,
     fill = TRUE
   )
+  # Backwards separator compatibility
+  if(ncol(M)!=4)
+    M = read.table(
+      file = file,
+      header = TRUE,
+      sep = ';',
+      dec = '.',
+      check.names = FALSE,
+      fill = TRUE
+    )
+  # Backwards colnames compatibility
+  if('m/z_exact' %in% colnames(M))
+    colnames(M)[colnames(M)=='m/z_exact'] = 'm/z_ref'
+
+  return(M)
 }
 peak_shape = function(x, p) {
   if(length(p)==3)
