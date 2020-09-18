@@ -49,7 +49,7 @@ dmz = 1.0       # Width of mz window around
 dCV = 1.2       # Width of CV window around
                 # reference CV for peak fit
 
-debug = TRUE    # Stop after first task
+debug = FALSE    # Stop after first task
 
 userTag = paste0('fit_dim_',fit_dim)
 
@@ -154,11 +154,14 @@ for(task in 1:nrow(Tasks)) {
 
   # Get MS ####
   file = paste0(dataRepo, dataPath, msTable)
-  MS0 = read.table(
-    file = file,
-    header = FALSE,
-    sep = ',',
-    stringsAsFactors = FALSE
+
+  MS0 = as.data.frame(
+    data.table::fread( # Much faster than read.table
+      file = file,
+      header = FALSE,
+      sep = ',',
+      stringsAsFactors = FALSE
+    )
   )
 
   time = MS0[, 1]

@@ -3,14 +3,14 @@ title: MS-Ana
 author: Philippe MAITRE and Pascal PERNOT
 date: "`r Sys.Date()`"
 output:
-  github_document:
-    toc: true
-    toc_depth: 3
-    pandoc_args: --webtex
   html_document: 
     number_sections: yes
     theme: cerulean
     toc: yes
+  github_document:
+    toc: true
+    toc_depth: 3
+    pandoc_args: --webtex
 ---
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
@@ -23,18 +23,18 @@ TBD...
 
 The project is organized into the following folders structure:
 ```
-|- analysis :   contains the R scripts 
-|               (analysis.R, checkRep.R, quantify.R)
-|               and their auxillary functions
-|
-|- data :       default folder for the input tables and 
-|               data to be analyzed
-|
-|- results :    where the outputs of the scripts are stored
-|  |
-   |- figs :    figures
-   |
-   |- tables :  tables
+├── analysis :   contains the R scripts 
+│               (analysis.R, checkRep.R, quantify.R)
+│               and their auxillary functions
+│
+├── data :       default folder for the input tables and 
+│               data to be analyzed
+│
+├── results :    where the outputs of the scripts are stored
+│   │
+    ├── figs :    figures
+    │
+    └── tables :  tables
 ```
 
 The scripts should be run from the `analysis` folder,

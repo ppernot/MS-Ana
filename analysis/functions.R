@@ -5,7 +5,8 @@ options( warn=0,
 # Install packages if necessary
 ## CRAN packages
 libs <- c('xtable','mixtools','inlmisc',
-          'rlist','repmis','assertive')
+          'rlist','repmis','assertive',
+          'data.table')
 for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
     install.packages(
@@ -253,7 +254,7 @@ plotPeak = function(
       ylab = 'a.u.'
     )
     title(main = 'Integ. CV profile', line = 0.5)
-    rect(CVlimf[1],-100,CVlimf[2],ylim[2]*1.2,
+    rect(CVlimf[1], -100, CVlimf[2], ylim[2]*1.2,
          col = cols_tr[4], border=NA)
 
     ## 2.1 Gaussian fit
@@ -887,4 +888,12 @@ getPars = function(res, dimfit){
     getPars2D(res)
   else
     getPars1D(res, dimfit)
+}
+fwm = function(x,ux){
+  # weigthed mean and its uncertainty
+  u2  = ux^2 + var(x)
+  w   = (1/u2)/sum(1/u2) # Variance weights
+  wm  = weighted.mean(x,w)
+  uwm = sqrt(1/sum(1/u2))
+  return(list(wm =wm,uwm =uwm))
 }

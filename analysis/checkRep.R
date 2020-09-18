@@ -84,11 +84,16 @@ for(it in 1:length(targets)) {
     daireAA^2 / aireAA^2 +
     daireIS^2 / aireIS^2
   )
+  # cat(AA, IS, '\n')
+  # print(data.frame(daireAA/aireAA, daireIS/aireIS, dratio/ratio))
+
   D[selAA,'ratio']   = signif(ratio,5)
   D[selAA,'u_ratio'] = signif(dratio,2)
 
   if(makePlots) {
-    par(mfrow = c(2,4), mar = mar)
+    par(mfrow = c(2,4),
+        mar = c(4,4,2,1),
+        xpd = FALSE)
 
     # CV vs. dilution
     x = D[selAA, 'dilu']
@@ -111,7 +116,9 @@ for(it in 1:length(targets)) {
     grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     lines(x, y0, lwd = 2, col = cols[3])
-    text(min(x),y0[1],'CV_ref',adj=0,cex=0.75)
+    text(min(x),y0[1],
+         ifelse(fit_dim==0,'mz_ref','CV_ref'),
+         adj=0,cex=0.75)
     cm = sort(unique(x))
     ym = c()
     for (i in 1:length(cm))
@@ -162,11 +169,11 @@ for(it in 1:length(targets)) {
     grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     abline(h=area_min, lwd= 2, col=cols[2])
-    w   = 1/dy^2
-    w   = w / sum(w)
-    wm  = weighted.mean(y,w)
-    s2  = var(y)
-    uwm = sqrt( sum(w^2*(s2+dy^2)) )
+
+    W   = fwm(y,dy)
+    wm  = W$wm
+    uwm = W$uwm
+
     abline(h=c(wm-2*uwm,wm,wm+2*uwm),
            col = cols[2],
            lty=c(2,1,2)
@@ -199,11 +206,10 @@ for(it in 1:length(targets)) {
     )
     grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
-    w   = 1/dy^2
-    w   = w / sum(w)
-    wm  = weighted.mean(y,w)
-    s2  = var(y)
-    uwm = sqrt( sum(w^2*(s2+dy^2)) )
+
+    W   = fwm(y,dy)
+    wm  = W$wm
+    uwm = W$uwm
     abline(h=c(wm-2*uwm,wm,wm+2*uwm),
            col = cols[2],
            lty=c(2,1,2)
@@ -231,7 +237,9 @@ for(it in 1:length(targets)) {
     grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     lines(x, y0, lwd = 2, col = cols[3])
-    text(min(x),y0[1],'CV_ref',adj=0,cex=0.75)
+    text(min(x),y0[1],
+         ifelse(fit_dim==0,'mz_ref','CV_ref'),
+         adj=0,cex=0.75)
     cm = sort(unique(x))
     ym = c()
     for (i in 1:length(cm))
@@ -240,6 +248,7 @@ for(it in 1:length(targets)) {
     box()
 
     # FWHM vs. dilution
+    ftag = ifelse(fit_dim==0,'FWHM_m/z','FWHM_CV')
     x = D[selIS, 'dilu']
     y = D[selIS, ftag]
     dy = 2 * D[selIS, paste0('u_',ftag)]
@@ -251,7 +260,7 @@ for(it in 1:length(targets)) {
       col = cols[5],
       log = '',
       xlab = 'Dilution',
-      ylab = 'FWHM',
+      ylab = ftag,
       ylim = ylim,
       main = IS
     )
@@ -281,11 +290,11 @@ for(it in 1:length(targets)) {
     grid()
     segments(x, y - dy, x, y + dy, col = cols[5])
     abline(h=area_min, lwd= 2, col=cols[2])
-    w   = 1/dy^2
-    w   = w / sum(w)
-    wm  = weighted.mean(y,w)
-    s2  = var(y)
-    uwm = sqrt( sum(w^2*(s2+0.000001*dy^2)) )
+
+    W   = fwm(y,dy)
+    wm  = W$wm
+    uwm = W$uwm
+
     abline(h=c(wm-2*uwm,wm,wm+2*uwm),
            col = cols[2],
            lty=c(2,1,2)
@@ -352,15 +361,11 @@ for(targ in targets) {
     if( sum(sel2) == 0 ) next
     if( sum(sel2) == 1 ) {
       wm  = x[sel2]
-      uwn = NA
+      uwm = NA
     } else {
-      x   = x[sel2]
-      ux  = ux[sel2]
-      w   = 1/ux^2
-      w   = w / sum(w)
-      wm  = weighted.mean(x,w)
-      s2  = var(x)
-      uwm = sqrt( sum(w^2*(s2+ux^2)) )
+      W   = fwm(x[sel2],ux[sel2])
+      wm  = W$wm
+      uwm = W$uwm
     }
     meanResTab[targ,prop]              = signif(wm , signum[prop])
     meanResTab[targ,paste0('u_',prop)] = signif(uwm, 2)
@@ -368,6 +373,29 @@ for(targ in targets) {
 }
 meanResTab[,'fit_dim'] = fit_dim
 meanResTab[,'tag']     = 'Mean'
+
+par(mfrow=c(1,1),mar=c(5,4,1,1))
+rownames(meanResTab) = targets
+ylim = c(0,
+         max(meanResTab[,'ratio'] + 2 * meanResTab[,'u_ratio']))
+bp = barplot(
+  meanResTab[, 'ratio'],
+  names.arg = targets,
+  las = 2,
+  ylim = ylim, ylab ='Ratio',
+  col = 'pink'
+)
+segments(
+  bp,
+  meanResTab[, 'ratio'] - 2 * meanResTab[, 'u_ratio'],
+  bp,
+  meanResTab[, 'ratio'] + 2 * meanResTab[, 'u_ratio'],
+  col = "blue",
+  lwd = 2
+)
+box()
+
+# Save all ####
 
 D = rbind(meanResTab,
           '',

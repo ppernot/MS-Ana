@@ -1,7 +1,7 @@
 MS-Ana
 ================
 Philippe MAITRE and Pascal PERNOT
-2020-08-28
+2020-09-09
 
   - [Purpose](#purpose)
   - [Data organization](#data-organization)
@@ -34,18 +34,18 @@ TBD…
 
 The project is organized into the following folders structure:
 
-    |- analysis :   contains the R scripts 
-    |               (analysis.R, checkRep.R, quantify.R)
-    |               and their auxillary functions
-    |
-    |- data :       default folder for the input tables and 
-    |               data to be analyzed
-    |
-    |- results :    where the outputs of the scripts are stored
-    |  |
-       |- figs :    figures
-       |
-       |- tables :  tables
+    ├── analysis :   contains the R scripts 
+    │               (analysis.R, checkRep.R, quantify.R)
+    │               and their auxillary functions
+    │
+    ├── data :       default folder for the input tables and 
+    │               data to be analyzed
+    │
+    ├── results :    where the outputs of the scripts are stored
+    │   │
+        ├── figs :    figures
+        │
+        └── tables :  tables
 
 The scripts should be run from the `analysis` folder, and the paths to
 the required folders are defined in the scripts as:
