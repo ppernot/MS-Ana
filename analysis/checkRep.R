@@ -26,6 +26,7 @@ fit_dim = 2
 userTag = paste0('fit_dim_',fit_dim)
 
 const_fwhm = 0.7
+area_min   = 10
 
 makePlots = TRUE
 
