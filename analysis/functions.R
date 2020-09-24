@@ -709,7 +709,6 @@ fit2D <- function(
     sx  = sx0,
     my  = y[maxz],
     sy  = sy0,
-    # rho = 0,
     A   = A0
   )
   upper = NULL
@@ -722,7 +721,6 @@ fit2D <- function(
       sx  = sx0 / 4,
       my  = CV0 - dCV / 10,
       sy  = 0.8 * sy0,
-      # rho = -1,
       A   = 0.5 * A0
     )
     start = c(
@@ -730,7 +728,6 @@ fit2D <- function(
       sx  = sx0,
       my  = CV0,
       sy  = sy0,
-      # rho = 0,
       A   = A0
     )
     upper = c(
@@ -738,7 +735,6 @@ fit2D <- function(
       sx  = 4 * sx0,
       my  = CV0 + dCV / 10,
       sy  = 1.2 * sy0,
-      # rho = 1,
       A   = 1.5 * A0
     )
   }
@@ -747,9 +743,6 @@ fit2D <- function(
     nls(
       z ~ A/(2*pi*sx*sy)*exp(
         -0.5 * ( (x-mx)^2/sx^2 + (y-my)^2/sy^2 ) ),
-      # z ~ A/(2*pi*sx*sy)*exp(-0.5/(1-rho^2) * (
-      #   (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
-      #     2*rho*(x-mx)*(y-my)/(sx*sy))),
       start = start,
       lower = lower,
       upper = upper,
@@ -768,9 +761,6 @@ fit2D <- function(
         nls(
           z ~ A/(2*pi*sx*sy)*exp(
             -0.5 * ( (x-mx)^2/sx^2 + (y-my)^2/sy^2 ) ),
-          # z ~ A/(2*pi*sx*sy)*exp(-0.5/(1-rho^2) * (
-          #   (x-mx)^2/sx^2 + (y-my)^2/sy^2 -
-          #     2*rho*(x-mx)*(y-my)/(sx*sy))),
           start = start,
           lower = lower,
           upper = upper,
@@ -781,8 +771,6 @@ fit2D <- function(
         silent = TRUE
       )
     }
-    # if(class(res) != 'try-error')
-    #   print(cbind(lower,coef(summary(res))[,"Estimate"],upper))
   }
 
   return(
@@ -896,10 +884,10 @@ fwm = function(x, ux) {
 
   # u2 is the part of the variance not explained by ux (parametric unc.)
   u2 = max(0, var(x) - mean(ux ^ 2)) # Cochran's ANOVA
-  ut2 = u2 + ux^2                    # Total variance for each point
+  ut2 = u2 + ux^2                    # Combined variance for each point
 
   # Variance weights
-  w = (1 / (ut2)) / sum(1 / ut2)
+  w = (1 / ut2) / sum(1 / ut2)
 
   # Standard weighted mean and uncertainty
   wm  = weighted.mean(x, w)

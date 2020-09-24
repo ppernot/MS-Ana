@@ -1,7 +1,7 @@
 MS-Ana
 ================
 Philippe MAITRE and Pascal PERNOT
-2020-09-09
+2020-09-24
 
   - [Purpose](#purpose)
   - [Data organization](#data-organization)
@@ -15,6 +15,8 @@ Philippe MAITRE and Pascal PERNOT
           - [Structure](#structure-2)
   - [Scripts](#scripts)
       - [`analysis.R`](#analysis.r)
+          - [Peak model](#peak-model)
+          - [Fit algorithm](#fit-algorithm)
           - [Control variables](#control-variables)
           - [Outputs](#outputs)
       - [`checkRep.R`](#checkrep.r)
@@ -23,6 +25,7 @@ Philippe MAITRE and Pascal PERNOT
       - [`quantify.R`](#quantify.r)
           - [Control variables](#control-variables-2)
           - [Outputs](#outputs-2)
+  - [References](#references)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
 
@@ -208,6 +211,8 @@ file, the series of metabolites given in `tgTable` is analyzed. The aim
 of the analysis is to integrate the peak (*i.e.*, to estimate the area)
 corresponding to each metabolite.
 
+### Peak model
+
 In the present version, a Gaussian peak shape is used. The formula of a
 Gaussian function is   
 ![&#10;G(x;a,x\_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma} &#10;
@@ -243,6 +248,18 @@ It turns out that we need three types of fit:
 
   - 1D fit in the *m/z* space, assuming that the *CV* value is the
     `CV_ref` given in the `tgTable`
+
+### Fit algorithm
+
+We use a non-linear (weighted) least-squares algorithm to estmate the
+parameters of the model: the `nls` function of the `stats` package
+\[1\].
+
+The parameters are constrained to intervals defined by control variables
+defined below. For the 2D fits, we implemented a ‘fallback’ strategy to
+1D fit in the *CV* space, in cases where the 2D optimizations does not
+converge. The effective dimension of the fit is reported in the results
+tables.
 
 ### Control variables
 
@@ -446,6 +463,7 @@ The job is defined by a few parameters.
     userTag = paste0('fit_dim_',fit_dim)
     
     const_fwhm = 0.7
+    area_min   = 10
     
     makePlots = TRUE
 
@@ -465,14 +483,41 @@ The job is defined by a few parameters.
   - `const_fwhm`: (numerical) estimate of the peak width in the *CV*
     direction to define the plot axes.
 
+  - `area_min` should have the same value than used in `analysis.R`
+    (only used for reporting in plots)
+
   - `makePlots`: (logical) generate the plots
 
 ### Outputs
 
 #### Figures
 
+Figures summarizing the set of data for all pairs of species and a
+summary of the mean values and their uncertainty are generated.
+
 Presently, the plots are generated in the Rstudio interface, but not
 saved to disk.
+
+**Checkrep plot for a repeatability analysis** ![](article/fig3.png)
+
+  - The plot reports the fit data (CV, FWHM and Area) for the species
+    (top row) and its tracer (bottom row). The last column displays the
+    calculated area ratios (top) and the correlation plot of the areas
+    for both species (bottom).
+    
+      - For FWHM, the green area depicts the limits imposed in the fit.
+    
+      - For Area and Ratio, the weighted mean and the limits of a
+        two-sigma uncertainty interval are represented as red horizontal
+        lines, full and dashed respectively.
+    
+      - For the Areas correlation plot, the unit line is represented in
+        green.
+
+  - For each point, two-sigma error bars are printed in blue.
+
+**Mean values and uncertainties for a repeatability analysis**
+![](article/fig4.png)
 
 #### Tables
 
@@ -486,10 +531,19 @@ following additions:
     | ratio | u\_ratio |
     | ----- | -------- |
 
-  - a set of lines with tag “Mean”, containing for each target compound,
+  - a set of lines with tag “Mean”, containing for each target compound
     the mean of the properties over the set of experiments. Weighted
-    means are estimated, based on the inverse of the squared
-    uncertainties.
+    means are used, with weights estimated by the Cochran’s ANOVA method
+    \[2\].
+    
+    The observed variance is decomposed in two terms: the variance due
+    to the parametric uncertainty on the property (estimated in
+    `analysis.R`), and an unknown variance term due to experimental
+    fluctuations (repeatability). The latter is estimated as the
+    observed variance minus the mean of the parametric variances, with a
+    positivity constraint. The variance for a datum is then the sum of
+    its parametric variance and the repeatability variance. The weights
+    are the normalized reciprocal variances \[3\].
 
 ## `quantify.R`
 
@@ -553,3 +607,15 @@ where
   - `Slo0` is the value of the slope with null intercept
 
   - `LOD` is the estimated limit of detection
+
+# References
+
+1.  R Core Team (2020). R: A language and environment for statistical
+    computing. R Foundation for Statistical Computing, Vienna, Austria.
+    [URL](https://www.R-project.org)
+
+2.  C. Rivier *et al.* (2014) *Accredit. Qual. Assur.* **19**:269–274
+    [doi](doi:https://doi.org/10.1007/s00769-014-1066-3)
+
+3.  Inverse variance weighting in
+    [Wikipedia](https://en.wikipedia.org/wiki/Inverse-variance_weighting)

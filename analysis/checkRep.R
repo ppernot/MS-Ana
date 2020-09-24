@@ -384,14 +384,14 @@ bp = barplot(
   names.arg = targets,
   las = 2,
   ylim = ylim, ylab ='Ratio',
-  col = 'pink'
+  col = cols_tr2[3]
 )
 segments(
   bp,
   meanResTab[, 'ratio'] - 2 * meanResTab[, 'u_ratio'],
   bp,
   meanResTab[, 'ratio'] + 2 * meanResTab[, 'u_ratio'],
-  col = "blue",
+  col = cols[5],
   lwd = 2
 )
 box()
