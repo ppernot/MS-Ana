@@ -9,14 +9,17 @@
 #   to avoid overwriting of results files
 #   when trying different fit_dim options
 # 2020_07_20 [PP]
-# - replaced '=' by '_' in userTag (Windows pb.)
-# - reparameterized gaussians with area replacing height
+# - Replaced '=' by '_' in userTag (Windows pb.)
+# - Reparameterized gaussians with area replacing height
 #   (avoids covariances in estimation of u_area )
-# - suppressed 'rho' param in 2D gaussians
+# - Suppressed 'rho' param in 2D gaussians
 # 2020_07_21 [PP]
-# - corrected typo in calculation of u_area in getPars1D
+# - Corrected typo in calculation of u_area in getPars1D
 # 2020_07_24 [PP]
-# - save ctrl params as metadata
+# - Save ctrl params as metadata
+# 2020_09_24
+# - All input files should now be comma-delimited
+#
 #===============================================
 #
 ## Load packages and functions ####

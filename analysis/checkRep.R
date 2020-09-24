@@ -10,6 +10,9 @@
 # - replaced ':' by '_' in date tag...
 # - added ratio vs.dilu fig.
 # - added correl. graph for areas AA vs. IS
+# 2020_09_24 [PP]
+# - changes weighted mean method to Cochran's ANOVA
+# - added bargraph of mean ratios
 #===============================================
 #
 ## Load packages and functions ####
@@ -375,8 +378,28 @@ for(targ in targets) {
 meanResTab[,'fit_dim'] = fit_dim
 meanResTab[,'tag']     = 'Mean'
 
+# Save all ####
+
+D = rbind(meanResTab,
+          '',
+          D)
+
+dataTag = format(Sys.time(), "%Y_%m_%d_%H_%M_%S")
+write.csv(
+  D,
+  row.names = FALSE,
+  file = paste0(
+    tabRepo,
+    dataTag,
+    ifelse(userTag == '', '', '_'),
+    userTag,
+    '_compilation.csv'
+  )
+)
+
+
+# Plot summary
 par(mfrow=c(1,1),mar=c(5,4,1,1))
-rownames(meanResTab) = targets
 ylim = c(0,
          max(meanResTab[,'ratio'] + 2 * meanResTab[,'u_ratio']))
 bp = barplot(
@@ -395,24 +418,4 @@ segments(
   lwd = 2
 )
 box()
-
-# Save all ####
-
-D = rbind(meanResTab,
-          '',
-          D)
-
-dataTag = format(Sys.time(), "%Y_%m_%d_%H_%M_%S")
-write.csv(
-  D[, -1],
-  row.names = FALSE,
-  file = paste0(
-    tabRepo,
-    dataTag,
-    ifelse(userTag == '', '', '_'),
-    userTag,
-    '_compilation.csv'
-  )
-)
-
 # END ####

@@ -251,13 +251,13 @@ It turns out that we need three types of fit:
 
 ### Fit algorithm
 
-We use a non-linear (weighted) least-squares algorithm to estmate the
+We use a non-linear (weighted) least-squares algorithm to estimate the
 parameters of the model: the `nls` function of the `stats` package
 \[1\].
 
 The parameters are constrained to intervals defined by control variables
 defined below. For the 2D fits, we implemented a ‘fallback’ strategy to
-1D fit in the *CV* space, in cases where the 2D optimizations does not
+1D fit in the *CV* space, in cases where the 2D optimization does not
 converge. The effective dimension of the fit is reported in the results
 tables.
 
@@ -483,10 +483,10 @@ The job is defined by a few parameters.
   - `const_fwhm`: (numerical) estimate of the peak width in the *CV*
     direction to define the plot axes.
 
-  - `area_min` should have the same value than used in `analysis.R`
-    (only used for reporting in plots)
+  - `area_min` (numerical) should have the same value than used in
+    `analysis.R` (only used for reporting in plots)
 
-  - `makePlots`: (logical) generate the plots
+  - `makePlots`: (logical) generate the plots, or not…
 
 ### Outputs
 

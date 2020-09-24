@@ -242,7 +242,7 @@ computing. R Foundation for Statistical Computing, Vienna, Austria.
 The parameters are constrained to intervals defined by 
 control variables defined below. 
 For the 2D fits, we implemented a 'fallback' strategy to 
-1D fit in the _CV_ space, in cases where the 2D optimizations
+1D fit in the _CV_ space, in cases where the 2D optimization
 does not converge. 
 The effective dimension of the fit is reported in the 
 results tables.
@@ -485,10 +485,10 @@ makePlots = TRUE
 * `const_fwhm`: (numerical) estimate of the peak width in
   the _CV_ direction to define the plot axes.
   
-* `area_min` should have the same value than used in `analysis.R`
+* `area_min` (numerical) should have the same value than used in `analysis.R`
 (only used for reporting in plots)
   
-* `makePlots`: (logical) generate the plots
+* `makePlots`: (logical) generate the plots, or not...
 
 ### Outputs
 
