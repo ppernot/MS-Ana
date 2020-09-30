@@ -6,7 +6,8 @@
 # - Adapt to new naming conventions in analysis.R
 # 2020_07_20 [PP]
 # - replaced '=' by '_' in userTag (Windows pb.)
-#
+# 2020_09_30 [PP]
+# - filtered out results and figs with NA problems
 #===============================================
 #
 # Load packages and functions ####
@@ -97,6 +98,9 @@ for(it in 1:length(targets)) {
   cr = cAA[selr]/cIS
   ratio = ratio[selr]
   dratio = dratio[selr]
+
+  if(!is.finite(cr) | !is.finite(ratio))
+    next
 
   plot(
     cr,

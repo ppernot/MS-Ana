@@ -95,7 +95,7 @@ gatherResults <- function(Tasks, tabRepo, userTag) {
     if(!file.exists(file))
       stop(paste0('Missing file:',file))
 
-    M = read.csv(file = file, check.names = FALSE )
+    M = read.csv(file = file, check.names = FALSE)
     # M = cbind(M,dilu)
     D = rbind(D,M)
   }

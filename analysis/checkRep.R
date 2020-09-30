@@ -13,6 +13,8 @@
 # 2020_09_24 [PP]
 # - changes weighted mean method to Cochran's ANOVA
 # - added bargraph of mean ratios
+# 2020_09_30 [PP]
+# - added the calculation of means for IS species
 #===============================================
 #
 ## Load packages and functions ####
@@ -378,9 +380,44 @@ for(targ in targets) {
 meanResTab[,'fit_dim'] = fit_dim
 meanResTab[,'tag']     = 'Mean'
 
+# Means for IS species
+targIS = quant$IS
+propsIS = props[-length(props)]
+signumIS = signum[-length(signum)]
+names(signumIS) = propsIS
+
+meanResTabIS = D[1:length(targIS),]
+meanResTabIS[,] = NA
+meanResTabIS[,'Name'] = targIS
+rownames(meanResTabIS) = targIS
+for(targ in targIS) {
+  sel = D$Name == targ
+  if(sum(sel)==0) next
+  for(prop in propsIS) {
+    x  = D[sel,prop]
+    ux = D[sel,paste0('u_',prop)]
+    sel2 = !is.na(x+ux)
+    if( sum(sel2) == 0 ) next
+    if( sum(sel2) == 1 ) {
+      wm  = x[sel2]
+      uwm = NA
+    } else {
+      W   = fwm(x[sel2],ux[sel2])
+      wm  = W$wm
+      uwm = W$uwm
+    }
+    meanResTabIS[targ,prop]              = signif(wm , signumIS[prop])
+    meanResTabIS[targ,paste0('u_',prop)] = signif(uwm, 2)
+  }
+}
+meanResTabIS[,'fit_dim'] = fit_dim
+meanResTabIS[,'tag']     = 'Mean'
+
 # Save all ####
 
 D = rbind(meanResTab,
+          '',
+          meanResTabIS,
           '',
           D)
 
