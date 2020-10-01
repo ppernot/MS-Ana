@@ -94,6 +94,8 @@ for(it in 1:length(targets)) {
       daireIS^2/aireIS^2
   )
   selr = !is.na(ratio)
+  if(sum(selr) == 0)
+    next
 
   cr = cAA[selr]/cIS
   ratio = ratio[selr]
