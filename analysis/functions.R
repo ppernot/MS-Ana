@@ -448,7 +448,7 @@ fit1D_MS <- function(
     A0 = s2p * sigma0 * max(MSl)
     lower = c(
       mu    = mu - dmz,
-      sigma = 0.999 * sigma0,
+      sigma = 0.8 * sigma0,
       A     = 0.5 * A0
     )
     start = c(
@@ -458,7 +458,7 @@ fit1D_MS <- function(
     )
     upper = c(
       mu    = mu + dmz,
-      sigma = 1.001 * sigma0,
+      sigma = 1.2 * sigma0,
       A     = 1.5 * A0
     )
   }
@@ -565,11 +565,11 @@ fit1D <- function(
   # First pass
   lower = NULL
   s2p = sqrt(2*pi)
-  sigma0 = 0.1/2.355
+  sigma0 = 0.7/2.355
   A0 = s2p * sigma0 * max(mMS)
   start = c(
     mu    = CVf[which.max(mMS)],
-    sigma = 0.6/2.355,
+    sigma = sigma0,
     A     = A0
   )
   upper = NULL
@@ -578,17 +578,17 @@ fit1D <- function(
     A0 = s2p * sigma0 * max(mMS)
     lower = c(
       mu    = CV0 - dCV/10,
-      sigma = 0.999 * sigma0,
-      A     =  0.5 * A0
+      sigma = 0.8 * sigma0,
+      A     = 0.5 * A0
     )
     start = c(
-      mu    = CVf[which.max(mMS)],
+      mu    = CV0,
       sigma = sigma0,
       A     = A0
     )
     upper = c(
       mu    = CV0 + dCV/10,
-      sigma = 1.001 * sigma0,
+      sigma = 1.2 * sigma0,
       A     = 1.5 * A0
     )
   }
@@ -699,7 +699,7 @@ fit2D <- function(
 
   # First pass
   sx0 = 0.2
-  sy0 = 0.6/2.355
+  sy0 = 0.7/2.355
   A0  = 2 * pi * sx0 * sy0 * max(z)
   maxz = which.max(z)
 
