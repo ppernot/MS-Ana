@@ -11,8 +11,8 @@ for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
     install.packages(
       lib,
-      dependencies = TRUE,
-      repos = 'https://cran.irsn.fr'
+      dependencies = TRUE #,
+      # repos = 'https://cran.irsn.fr'
     )
   }
 }
@@ -517,7 +517,8 @@ fit1D <- function(
   del_mz,
   weighted = FALSE,
   const_fwhm = NA,
-  refine_CV0 = FALSE
+  refine_CV0 = FALSE,
+  correct_overlap = FALSE
 ) {
 
   # Select mz window
@@ -646,7 +647,8 @@ fit2D <- function(
   del_mz,
   weighted = FALSE,
   const_fwhm = NA,
-  refine_CV0 = FALSE
+  refine_CV0 = FALSE,
+  correct_overlap = FALSE
 ) {
 
   # Select mz window
@@ -698,20 +700,8 @@ fit2D <- function(
   }
 
   # First pass
-  sx0 = 0.2
-  sy0 = 0.7/2.355
-  A0  = 2 * pi * sx0 * sy0 * max(z)
   maxz = which.max(z)
 
-  lower = NULL
-  start = c(
-    mx  = x[maxz],
-    sx  = sx0,
-    my  = y[maxz],
-    sy  = sy0,
-    A   = A0
-  )
-  upper = NULL
   if(!is.na(const_fwhm)) {
     sx0 = 0.2
     sy0 = const_fwhm / 2.355
@@ -737,6 +727,21 @@ fit2D <- function(
       sy  = 1.2 * sy0,
       A   = 1.5 * A0
     )
+
+  } else {
+    sx0 = 0.2
+    sy0 = 0.7/2.355
+    A0  = 2 * pi * sx0 * sy0 * max(z)
+
+    lower = NULL
+    start = c(
+      mx  = x[maxz],
+      sx  = sx0,
+      my  = y[maxz],
+      sy  = sy0,
+      A   = A0
+    )
+    upper = NULL
   }
 
   res = try(
