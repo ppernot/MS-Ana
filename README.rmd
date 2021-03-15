@@ -260,6 +260,8 @@ as follows:
 taskTable = 'files_quantification_2019.csv'
 tgTable   = 'targets_paper.csv'
 
+ms_type = c('esquire','fticr')[1]
+
 save_figures = TRUE
 plot_maps    = FALSE
 
@@ -288,6 +290,8 @@ area_min    = 10
 * `taskTable`: (string) file path to the tasks table 
 
 * `tgTable`: (string) file path to the targets table 
+
+* `ms_type`: (string) MS type ('esquire' or 'fticr')
 
 * `save_figures`: (logical) save the plots on disk 
 
