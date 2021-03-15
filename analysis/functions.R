@@ -57,6 +57,53 @@ print(sessionInfo(), locale=FALSE)
 sink()
 
 # Functions ####
+getMS = function(file, ms_type = 'esquire') {
+
+  cat('\n >>> Reading ',ms_type,' MS in file:',file)
+  MS0 = as.data.frame(
+    data.table::fread( # Much faster than read.table
+      file = file ,
+      header = FALSE ,
+      sep = ',' ,
+      stringsAsFactors = FALSE
+    )
+  )
+  time = MS0[, 1]
+
+  if(ms_type == 'esquire') {
+    range_mz = as.numeric(unlist(strsplit(MS0[1, 7], split = '-')))
+    n_del_mz = as.numeric(unlist(strsplit(MS0[1, 8], split = '/')))
+    nchan    = n_del_mz[1]
+    del_mz   = n_del_mz[2]
+    mz       = range_mz[1] + (0:(nchan - 1)) * del_mz
+    MS       = as.matrix(MS0[, -(1:8)],
+                         ncol = length(mz),
+                         byrow = FALSE)
+  } else {
+    mySplit = function(x) as.numeric(unlist(strsplit(x, split = ' ')))
+    mz = c()
+    msLen = ncol(MS0)-8
+    MS = matrix(NA, nrow = nrow(MS0), ncol = msLen)
+    for (j in 1:nrow(MS0)) {
+      dbl = vapply(
+        MS0[j, 9:(msLen + 8)],
+        FUN = mySplit,
+        FUN.VALUE = numeric(2)
+      )
+      mz      = dbl[1, ]
+      MS[j, ] = dbl[2, ]
+    }
+  }
+
+  return(
+    list(
+      mz = mz,
+      time = time,
+      MS = MS
+    )
+  )
+}
+
 makeTag <- function(CVTable, msTable, userTag) {
   date =
     strsplit(
@@ -191,11 +238,11 @@ plotPeak = function(
       # Fit 2D
       p = matrix(
         predict(res),
-        ncol=ncol(MSloc),
-        nrow=nrow(MSloc),
+        ncol = ncol(MSloc),
+        nrow = nrow(MSloc),
         byrow = TRUE
       )
-      contour(CVf, mzLoc, p, col = cols_tr2[5], add=TRUE)
+      contour(CVf, mzloc, p, col = cols_tr2[5], add=TRUE)
     }
     if(type == 'CV')
       rect(CVlimf[1],mz1,CVlimf[2],mz2,
@@ -510,7 +557,15 @@ fit1D_MS <- function(
     )
   )
 }
-fit1D <- function(
+trapz = function (x, y) {
+  if(length(x) == 0)
+    return(0)
+  idx = 2:length(x)
+  return(
+    as.double((x[idx] - x[idx - 1]) %*% (y[idx] + y[idx - 1]))/2
+  )
+}
+fit1D_old <- function(
   mz0, CV0,
   dmz, dCV,
   mz, CV, MS,
@@ -520,13 +575,13 @@ fit1D <- function(
   refine_CV0 = FALSE,
   correct_overlap = FALSE
 ) {
-
+print("enter...")
   # Select mz window
   mz1 = mz0 - dmz/2 # min mz for averaging
   mz2 = mz0 + dmz/2 # max mz
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
   # Integrated CV profile
-  mMStot = rowSums(MS[, selMz])*del_mz
+  mMStot = rowSums(MS[, selMz]) * del_mz
 
   # Select CV window
   if(is.na(CV0))
@@ -545,7 +600,7 @@ fit1D <- function(
   CVf = CV[selCV]
 
   # Refine mz window
-  MSloc = MS[selCV, selMz]
+  MSloc  = MS[selCV, selMz]
   mMS = rowSums(MSloc)*del_mz # Sum over selected mz
   mz_max = which.max(MSloc[which.max(mMS),])
   mz0 = mz[selMz][mz_max]
@@ -640,11 +695,10 @@ fit1D <- function(
     )
   )
 }
-fit2D <- function(
+fit1D <- function(
   mz0, CV0,
   dmz, dCV,
   mz, CV, MS,
-  del_mz,
   weighted = FALSE,
   const_fwhm = NA,
   refine_CV0 = FALSE,
@@ -656,7 +710,142 @@ fit2D <- function(
   mz2 = mz0 + dmz/2 # max mz
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
   # Integrated CV profile
-  mMStot = rowSums(MS[, selMz])*del_mz
+  mzloc = mz[selMz]
+  mMStot = apply(MS[, selMz], 1, function(x) trapz(mzloc,x))
+
+  # Select CV window
+  if(is.na(CV0))
+    CV0 = CV[which.max(mMStot)]
+  CV1 = CV0 - dCV/2
+  CV2 = CV0 + dCV/2
+  selCV = CV >= CV1 & CV <= CV2
+
+  if(refine_CV0){
+    im = which.max(mMStot[selCV])
+    CV0 = CV[selCV][im]
+    CV1 = CV0 - dCV/2
+    CV2 = CV0 + dCV/2
+    selCV = CV >= CV1 & CV <= CV2
+  }
+  CVf = CV[selCV]
+
+  # Refine mz window
+  MSloc  = MS[selCV, selMz]
+  mzloc  = mz[selMz]
+  mMS    = apply(MSloc, 1, function(x) trapz(mzloc, x))
+
+  mz_max = which.max(MSloc[which.max(mMS),])
+  mz0 = mz[selMz][mz_max]
+  mz1 = mz0 - dmz/2 # min mz for averaging
+  mz2 = mz0 + dmz/2 # max mz
+  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+
+  # Normal fit
+  mzloc = mz[selMz]
+  mMS = apply(MS[selCV, selMz], 1, function(x) trapz(mzloc,x))
+
+  # Weighting scheme
+  weights = rep(1,length(mMS))
+  if(weighted){ # Poisson
+    weights = 1 / mMS
+    vm = min(mMS[mMS>0])
+    weights[!is.finite(weights)] = 1 / vm
+  }
+
+  # First pass
+  lower = NULL
+  s2p = sqrt(2*pi)
+  sigma0 = 0.7/2.355
+  A0 = s2p * sigma0 * max(mMS)
+  start = c(
+    mu    = CVf[which.max(mMS)],
+    sigma = sigma0,
+    A     = A0
+  )
+  upper = NULL
+  if(!is.na(const_fwhm)) {
+    sigma0 = const_fwhm/2.355
+    A0 = s2p * sigma0 * max(mMS)
+    lower = c(
+      mu    = CV0 - dCV/10,
+      sigma = 0.8 * sigma0,
+      A     = 0.5 * A0
+    )
+    start = c(
+      mu    = CV0,
+      sigma = sigma0,
+      A     = A0
+    )
+    upper = c(
+      mu    = CV0 + dCV/10,
+      sigma = 1.2 * sigma0,
+      A     = 1.5 * A0
+    )
+  }
+
+  res = try(
+    nls(
+      mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
+      start = start,
+      lower = lower,
+      upper = upper,
+      algorithm = 'port',
+      weights = weights,
+      control = list(tol=1e-5,warnOnly=TRUE)
+    ),
+    silent = TRUE
+  )
+
+  if(class(res) != 'try-error') {
+    if(res$convergence != 0) {
+      # Attempt second pass from pass1 optimum
+      start = as.list(coef(summary(res))[,"Estimate"])
+      res = try(
+        nls(
+          mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
+          start = start,
+          lower = lower,
+          upper = upper,
+          algorithm = 'port',
+          weights = weights,
+          control = list(tol=1e-5)
+        ),
+        silent = TRUE
+      )
+    }
+    # if(class(res) != 'try-error')
+    #   print(cbind(lower,coef(summary(res))[,"Estimate"],upper))
+  }
+
+  return(
+    list(
+      mz0 = mz0,
+      mz1 = mz1,
+      mz2 = mz2,
+      res = res,
+      mMS = mMS,
+      mMStot = mMStot,
+      CVf = CVf
+    )
+  )
+}
+fit2D <- function(
+  mz0, CV0,
+  dmz, dCV,
+  mz, CV, MS,
+  weighted = FALSE,
+  const_fwhm = NA,
+  refine_CV0 = FALSE,
+  correct_overlap = FALSE
+) {
+
+  # Select mz window
+  mz1 = mz0 - dmz/2 # min mz for averaging
+  mz2 = mz0 + dmz/2 # max mz
+  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
+  # Integrated CV profile
+  mzloc = mz[selMz]
+  mMStot = apply(MS[, selMz], 1, function(x) trapz(mzloc,x))
 
   # Select CV window
   if(is.na(CV0))
@@ -676,7 +865,8 @@ fit2D <- function(
 
   # Refine mz window
   MSloc = MS[selCV, selMz]
-  mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+  mzloc = mz[selMz]
+  mMS = apply(MSloc, 1, function(x) trapz(mzloc,x))
   mz_max = which.max(MSloc[which.max(mMS),])
   mz0 = mz[selMz][mz_max]
   mz1 = mz0 - dmz/2 # min mz for averaging
@@ -684,14 +874,15 @@ fit2D <- function(
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
 
   MSloc = MS[selCV, selMz]
-  mzLoc = mz[selMz]
-  mMS = rowSums(MSloc)*del_mz # Sum over selected mz
+  mzloc = mz[selMz]
+  mMS = apply(MSloc, 1, function(x) trapz(mzloc,x))
 
   # Normal fit
-  grid = expand.grid(x = mzLoc, y = CVf)
+  grid = expand.grid(x = mzloc, y = CVf)
   x = grid$x
   y = grid$y
   z = as.vector(t(MSloc))
+
   weights = rep(1,length(z))
   if(weighted){ # Poisson
     weights = 1 / z
@@ -787,7 +978,7 @@ fit2D <- function(
       mMS = mMS,
       mMStot = mMStot,
       CVf = CVf,
-      mzLoc = mzLoc,
+      mzloc = mzloc,
       MSloc = MSloc
     )
   )

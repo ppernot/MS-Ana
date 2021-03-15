@@ -17,8 +17,15 @@
 # - Corrected typo in calculation of u_area in getPars1D
 # 2020_07_24 [PP]
 # - Save ctrl params as metadata
-# 2020_09_24
+# 2020_09_24 [PP]
 # - All input files should now be comma-delimited
+# 2021_03_15 [PP]
+# - Adapted code to FT-ICR MS files:
+#   * new 'ms_type' flag
+#   * new getMS function to handle ms_type cases
+#   * new trapz function to handle MS integration
+#     with irregular mz grids
+#   * adapted fit1D and fit2D to use trapz
 #
 #===============================================
 #
@@ -27,8 +34,10 @@ source('functions.R')
 
 # User configuration params ####
 
-taskTable = 'files_quantification_2019July10.csv'
-tgTable   = 'targets_paper.csv'
+taskTable = 'files_quantification_2019.csv'
+tgTable   = 'targets_paper_renew.csv'
+
+ms_type = c('esquire','fticr')[2]
 
 filter_results = TRUE
 fwhm_mz_min = 0.1
@@ -40,24 +49,26 @@ area_min    = 10
 save_figures = TRUE
 plot_maps    = FALSE
 
-fit_dim  = 0    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fit_dim  = 1    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
 
+correct_overlap = FALSE
 weighted_fit = FALSE
 refine_CV0   = TRUE
-const_fwhm   = ifelse(fit_dim == 0,NA,0.7)
+const_fwhm   = ifelse(fit_dim == 0,NA,0.7) # Central value for FWHM constraint
 
 dmz = 1.0       # Width of mz window around
                 # exact mz for signal averaging
-dCV = 1.2       # Width of CV window around
+dCV = 1.5       # Width of CV window around
                 # reference CV for peak fit
 
-debug = FALSE    # Stop after first task
+debug = TRUE    # Stop after first task
 
 userTag = paste0('fit_dim_',fit_dim)
 
 ctrlParams = list(
   userTag        = userTag,
+  ms_type        = ms_type,
   taskTable      = taskTable,
   tgTable        = tgTable,
   filter_results = filter_results,
@@ -157,25 +168,11 @@ for(task in 1:nrow(Tasks)) {
 
   # Get MS ####
   file = paste0(dataRepo, dataPath, msTable)
-
-  MS0 = as.data.frame(
-    data.table::fread( # Much faster than read.table
-      file = file,
-      header = FALSE,
-      sep = ',',
-      stringsAsFactors = FALSE
-    )
-  )
-
-  time = MS0[, 1]
-  range_mz = as.numeric(unlist(strsplit(MS0[1, 7], split = '-')))
-  n_del_mz = as.numeric(unlist(strsplit(MS0[1, 8], split = '/')))
-  nchan    = n_del_mz[1]
-  del_mz   = n_del_mz[2]
-  mz       = range_mz[1] + (0:(nchan - 1)) * del_mz
-  MS       = as.matrix(MS0[, -(1:8)],
-                       ncol = length(mz),
-                       byrow = FALSE)
+  lMS  = getMS(file, ms_type)
+  time = lMS$time
+  mz   = lMS$mz
+  MS   = lMS$MS
+  rm(lMS) # Clean-up memory
 
   # Get CV ####
   file = paste0(dataRepo, CVTable)
@@ -253,10 +250,10 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, CV, MS,
-        del_mz,
         weighted = weighted_fit,
         refine_CV0 = refine_CV0,
-        const_fwhm = const_fwhm
+        const_fwhm = const_fwhm,
+        correct_overlap = correct_overlap
       )
       dimfit = 2
       if(class(fitOut$res) == 'try-error' & fallback) {
@@ -265,10 +262,10 @@ for(task in 1:nrow(Tasks)) {
           mz0, CV0,
           dmz, dCV,
           mz, CV, MS,
-          del_mz,
           weighted = weighted_fit,
           refine_CV0 = refine_CV0,
-          const_fwhm = const_fwhm
+          const_fwhm = const_fwhm,
+          correct_overlap = correct_overlap
         )
         dimfit = 1
       }
@@ -279,10 +276,10 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, CV, MS,
-        del_mz,
         weighted = weighted_fit,
         refine_CV0 = refine_CV0,
-        const_fwhm = const_fwhm
+        const_fwhm = const_fwhm,
+        correct_overlap = correct_overlap
       )
       dimfit = 1
 
@@ -371,6 +368,7 @@ for(task in 1:nrow(Tasks)) {
              paste0('FWHM = ', signif(fwhm_mz,3),'\n')),
       'Area = ', signif(area,3)
     )
+    print(coefficients(fitOut$res))
     plotPeak(
       mz, CV, MS,
       fitOut,
@@ -473,7 +471,7 @@ for(task in 1:nrow(Tasks)) {
     )
   )
 
-  if(debug) stop()
+  if(debug) stop('Ended prematurely (debug)...')
 }
 
 # END ####
