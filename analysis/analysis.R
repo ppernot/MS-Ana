@@ -34,8 +34,8 @@ source('functions.R')
 
 # User configuration params ####
 
-taskTable = 'files_quantification_2019.csv'
-tgTable   = 'targets_paper_renew.csv'
+taskTable = 'files_quantification_2018AA.csv'
+tgTable   = 'Test_FTICR_2/targets_list.csv'
 
 ms_type = c('esquire','fticr')[2]
 
@@ -57,12 +57,12 @@ weighted_fit = FALSE
 refine_CV0   = TRUE
 const_fwhm   = ifelse(fit_dim == 0,NA,0.7) # Central value for FWHM constraint
 
-dmz = 1.0       # Width of mz window around
+dmz = 0.1       # Width of mz window around
                 # exact mz for signal averaging
 dCV = 1.5       # Width of CV window around
                 # reference CV for peak fit
 
-debug = TRUE    # Stop after first task
+debug = FALSE   # Stop after first task
 
 userTag = paste0('fit_dim_',fit_dim)
 
@@ -471,7 +471,10 @@ for(task in 1:nrow(Tasks)) {
     )
   )
 
-  if(debug) stop('Ended prematurely (debug)...')
+  if(debug){
+    message('Ended prematurely (debug)...')
+    stop(call. = FALSE)
+  }
 }
 
 # END ####
