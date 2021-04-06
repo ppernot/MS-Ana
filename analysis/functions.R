@@ -1194,6 +1194,9 @@ compressMS = function(file_in,
       selClosest = selClosest[unique(sel)]
     }
 
+    # Reorder to compensate for targets +/- random order
+    selClosest = sort(selClosest)
+
     cat('>>> Compress m/z from',length(mz),'to',length(selClosest),
         '(',round(100*(1-length(selClosest)/length(mz))),'%)\n' )
 
