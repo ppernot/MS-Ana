@@ -26,6 +26,10 @@
 #   * new trapz function to handle MS integration
 #     with irregular mz grids
 #   * adapted fit1D and fit2D to use trapz
+# 2021_04_06 [PP]
+# - Added baseline correction function
+#   * new 'baseline_cor' flag
+#   * new bslCorMS function
 #
 #===============================================
 #
@@ -34,8 +38,8 @@ source('functions.R')
 
 # User configuration params ####
 
-taskTable = 'files_quantification_2018AA.csv'
-tgTable   = 'Test_FTICR_2/targets_list.csv'
+taskTable = 'Test2/files_quantification_2018AA.csv'
+tgTable   = 'Test2/targets_paper_renew.csv'
 
 ms_type = c('esquire','fticr')[2]
 
@@ -52,6 +56,7 @@ plot_maps    = FALSE
 fit_dim  = 1    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
 
+baseline_cor = 'global+median' # Constant baseline over all matrix; median estimator
 correct_overlap = FALSE
 weighted_fit = FALSE
 refine_CV0   = TRUE
@@ -204,6 +209,9 @@ for(task in 1:nrow(Tasks)) {
   MS   = apply(MS, 2, rev) # reverse column to conform with CV
   CV   = CV[selCV]
   nCV  = length(CV)
+
+  ## Baseline correction
+  MS = bslCorMS(MS, baseline_cor)
 
   ## Initialize results table
   resu = cbind(
@@ -368,7 +376,9 @@ for(task in 1:nrow(Tasks)) {
              paste0('FWHM = ', signif(fwhm_mz,3),'\n')),
       'Area = ', signif(area,3)
     )
+
     print(coefficients(fitOut$res))
+
     plotPeak(
       mz, CV, MS,
       fitOut,
@@ -380,6 +390,7 @@ for(task in 1:nrow(Tasks)) {
       CV0 = CV0,
       gPars = gParsLoc
     )
+
     if(save_figures) {
       png(filename = paste0(figRepo, tag, '_', targets[it, 1], '.png'),
         width    = 2*gPars$reso,
@@ -475,6 +486,7 @@ for(task in 1:nrow(Tasks)) {
     message('Ended prematurely (debug)...')
     stop(call. = FALSE)
   }
+
 }
 
 # END ####
