@@ -90,6 +90,8 @@ fwhm_cv_max = peakSpecs$fwhm_cv_max
 fwhm_cv_nom = peakSpecs$fwhm_cv_nom
 dCV         = peakSpecs$dCV
 
+baseline_cor = peakSpecs$baseline_cor
+
 # Gather run params for reproducibility
 ctrlParams = list(
   userTag        = userTag,
