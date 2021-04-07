@@ -58,7 +58,68 @@ print(sessionInfo(), locale=FALSE)
 sink()
 
 # Functions ####
+getPeakSpecs = function(ms_type) {
 
+  if(! ms_type %in% c('esquire','fticr'))
+    stop('>>> Bad ms_type !')
+
+  if(ms_type == 'fticr') {
+
+    # Acceptable range for MS peak width
+    fwhm_mz_min = 0.001
+    fwhm_mz_max = 0.02
+
+    # Nominal value for peak fit
+    fwhm_mz_nom = 0.01
+
+    # Width of mz window around exact mz for signal averaging
+    dmz = 5 * fwhm_mz_nom # ~ 10-sigma interval
+
+    # Constant baseline over all matrix; median estimator
+    baseline_cor = 'global+median'
+
+  } else { # Default: Esquire
+
+    # Acceptable range for MS peak width
+    fwhm_mz_min = 0.1
+    fwhm_mz_max = 0.5
+
+    # Nominal value for peak fit
+    fwhm_mz_nom = 0.2
+
+    # Width of mz window around exact mz for signal averaging
+    dmz = 5 * fwhm_mz_nom
+
+    # Constant baseline over all matrix; median estimator
+    baseline_cor = NULL
+
+  }
+
+  # Acceptable range for CV peak width
+  fwhm_cv_min = 0.5
+  fwhm_cv_max = 1.5
+
+  # Nominal value for CV peak's FWHM constraint
+  fwhm_cv_nom = 1.0
+
+  # Width of CV window around reference CV for peak fit
+  dCV = 2.5
+
+  return(
+    list(
+      fwhm_mz_min  = fwhm_mz_min,
+      fwhm_mz_max  = fwhm_mz_max,
+      fwhm_mz_nom  = fwhm_mz_nom,
+      dmz          = dmz,
+      baseline_cor = baseline_cor,
+      fwhm_cv_min  = fwhm_cv_min,
+      fwhm_cv_max  = fwhm_cv_max,
+      fwhm_cv_nom  = fwhm_cv_nom,
+      dCV          = dCV
+    )
+  )
+
+}
 getMS = function(file, ms_type = 'esquire') {
 
   cat('\n>>> Reading',ms_type,'MS in file:',file,'\n')
@@ -275,8 +336,8 @@ plotPeak = function(
       contour(CVf, mzloc, p, col = cols_tr2[5], add=TRUE)
     }
     if(type == 'CV')
-      rect(CVlimf[1],mz1,CVlimf[2],mz2,
-           col = cols_tr[4], border=NA)
+      rect(CVlimf[1], mz1, CVlimf[2], mz2,
+           col = cols_tr[4], border = NA)
   }
 
 
@@ -302,12 +363,12 @@ plotPeak = function(
   } else {
     if( length(v) == 3) {
       abline(v = v[1], lty = 2, col = cols[2])
-      if(!is.na(mz0))
-        abline(h = mz0, lty = 2, col = cols[2])
     } else {
       abline(h = v[1], lty = 2, col = cols[2])
       abline(v = v[3], lty = 2, col = cols[2])
     }
+    if(!is.na(mz0))
+      abline(h = mz0, lty = 2, col = cols[2])
   }
 
   if(type == 'CV') {
@@ -349,11 +410,11 @@ plotPeak = function(
     ## Add fit results
     if (!is.na(val))
       legend(
-        x=CVlim[1], y=ylim[2],
-        yjust = 1.75,
-        title  = val,
-        legend = '',
-        # inset  = 0.12,
+        x=CVlim[1],
+        y=ylim[2]-0.75*strheight(val,units='user',cex=0.8),
+        yjust = 0,
+        # title  = val,
+        legend = val,
         bty    = 'n',
         cex    = 0.8)
 
@@ -395,15 +456,13 @@ plotPeak = function(
 
     ## Add fit results
     if (!is.na(val))
-      legend('right',
-        # x=mzlim[1], y=ylim[2],
-        yjust = 1.75,
-        title  = val,
-        legend = '',
-        # inset  = 0.05,
+      legend(
+        x = mzlim[1],
+        y = ylim[2] - strheight(val, units = 'user', cex = 0.8),
+        yjust = 0,
+        legend = val,
         bty    = 'n',
         cex    = 0.8)
-
   }
 
 }
@@ -480,12 +539,20 @@ plotMaps = function(
     abline(h=mex,lty=1,col=cols_tr2[5])
 
 }
+trapz = function (x, y) {
+  if(length(x) == 0)
+    return(0)
+  idx = 2:length(x)
+  return(
+    as.double((x[idx] - x[idx - 1]) %*% (y[idx] + y[idx - 1]))/2
+  )
+}
 fit1D_MS <- function(
   mz0, CV0,
   dmz, dCV,
   mz, CV, MS,
-  weighted = FALSE,
-  const_fwhm = NA
+  fwhm_mz_nom,
+  weighted = FALSE
 ) {
 
   # Select CV0
@@ -497,7 +564,7 @@ fit1D_MS <- function(
   selMz  = mz >= mz1 & mz <= mz2 # Select mz area
   # mz profile
   MStot = MS[iCV,]
-  mzl = mz[selMz]
+  mzl = as.vector(mz[selMz])
   MSl = MS[iCV, selMz]
 
   # Normal fit
@@ -510,35 +577,23 @@ fit1D_MS <- function(
 
   # First pass
   mu = mzl[which.max(MSl)]
-  lower = NULL
-  s2p = sqrt(2*pi)
-  sigma0 = 0.1/2.355
-  A0 = s2p * sigma0 * max(MSl)
+  sigma0 = fwhm_mz_nom/2.355
+  A0 = sqrt(2*pi) * sigma0 * max(MSl)
+  lower = c(
+    mu    = mu - dmz,
+    sigma = 0.1 * sigma0,
+    A     = 0.5 * A0
+  )
   start = c(
     mu    = mu,
     sigma = sigma0,
     A     = A0
   )
-  upper = NULL
-  if(!is.na(const_fwhm)) {
-    sigma0 = const_fwhm/2.355
-    A0 = s2p * sigma0 * max(MSl)
-    lower = c(
-      mu    = mu - dmz,
-      sigma = 0.8 * sigma0,
-      A     = 0.5 * A0
-    )
-    start = c(
-      mu    = mu,
-      sigma = sigma0,
-      A     = A0
-    )
-    upper = c(
-      mu    = mu + dmz,
-      sigma = 1.2 * sigma0,
-      A     = 1.5 * A0
-    )
-  }
+  upper = c(
+    mu    = mu + dmz,
+    sigma = 2.0 * sigma0,
+    A     = 1.5 * A0
+  )
 
   res = try(
     nls(
@@ -587,150 +642,12 @@ fit1D_MS <- function(
     )
   )
 }
-trapz = function (x, y) {
-  if(length(x) == 0)
-    return(0)
-  idx = 2:length(x)
-  return(
-    as.double((x[idx] - x[idx - 1]) %*% (y[idx] + y[idx - 1]))/2
-  )
-}
-fit1D_old <- function(
-  mz0, CV0,
-  dmz, dCV,
-  mz, CV, MS,
-  del_mz,
-  weighted = FALSE,
-  const_fwhm = NA,
-  refine_CV0 = FALSE,
-  correct_overlap = FALSE
-) {
-print("enter...")
-  # Select mz window
-  mz1 = mz0 - dmz/2 # min mz for averaging
-  mz2 = mz0 + dmz/2 # max mz
-  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-  # Integrated CV profile
-  mMStot = rowSums(MS[, selMz]) * del_mz
-
-  # Select CV window
-  if(is.na(CV0))
-    CV0 = CV[which.max(mMStot)]
-  CV1 = CV0 - dCV/2
-  CV2 = CV0 + dCV/2
-  selCV = CV >= CV1 & CV <= CV2
-
-  if(refine_CV0){
-    im = which.max(mMStot[selCV])
-    CV0 = CV[selCV][im]
-    CV1 = CV0 - dCV/2
-    CV2 = CV0 + dCV/2
-    selCV = CV >= CV1 & CV <= CV2
-  }
-  CVf = CV[selCV]
-
-  # Refine mz window
-  MSloc  = MS[selCV, selMz]
-  mMS = rowSums(MSloc)*del_mz # Sum over selected mz
-  mz_max = which.max(MSloc[which.max(mMS),])
-  mz0 = mz[selMz][mz_max]
-  mz1 = mz0 - dmz/2 # min mz for averaging
-  mz2 = mz0 + dmz/2 # max mz
-
-  selMz  = mz >= mz1 & mz <= mz2 # Select mz area
-
-  # Normal fit
-  mMS = rowSums(MS[selCV, selMz])*del_mz # Sum over selected mz
-  weights = rep(1,length(mMS))
-  if(weighted){ # Poisson
-    weights = 1 / mMS
-    vm = min(mMS[mMS>0])
-    weights[!is.finite(weights)] = 1 / vm
-  }
-
-  # First pass
-  lower = NULL
-  s2p = sqrt(2*pi)
-  sigma0 = 0.7/2.355
-  A0 = s2p * sigma0 * max(mMS)
-  start = c(
-    mu    = CVf[which.max(mMS)],
-    sigma = sigma0,
-    A     = A0
-  )
-  upper = NULL
-  if(!is.na(const_fwhm)) {
-    sigma0 = const_fwhm/2.355
-    A0 = s2p * sigma0 * max(mMS)
-    lower = c(
-      mu    = CV0 - dCV/10,
-      sigma = 0.8 * sigma0,
-      A     = 0.5 * A0
-    )
-    start = c(
-      mu    = CV0,
-      sigma = sigma0,
-      A     = A0
-    )
-    upper = c(
-      mu    = CV0 + dCV/10,
-      sigma = 1.2 * sigma0,
-      A     = 1.5 * A0
-    )
-  }
-
-  res = try(
-    nls(
-      mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
-      start = start,
-      lower = lower,
-      upper = upper,
-      algorithm = 'port',
-      weights = weights,
-      control = list(tol=1e-5,warnOnly=TRUE)
-    ),
-    silent = TRUE
-  )
-
-  if(class(res) != 'try-error') {
-    if(res$convergence != 0) {
-      # Attempt second pass from pass1 optimum
-      start = as.list(coef(summary(res))[,"Estimate"])
-      res = try(
-        nls(
-          mMS ~ A/(sqrt(2*pi)*sigma)*exp(-1/2*(CVf-mu)^2/sigma^2),
-          start = start,
-          lower = lower,
-          upper = upper,
-          algorithm = 'port',
-          weights = weights,
-          control = list(tol=1e-5)
-        ),
-        silent = TRUE
-      )
-    }
-    # if(class(res) != 'try-error')
-    #   print(cbind(lower,coef(summary(res))[,"Estimate"],upper))
-  }
-
-  return(
-    list(
-      mz0 = mz0,
-      mz1 = mz1,
-      mz2 = mz2,
-      res = res,
-      mMS = mMS,
-      mMStot = mMStot,
-      CVf = CVf
-    )
-  )
-}
 fit1D <- function(
   mz0, CV0,
   dmz, dCV,
   mz, CV, MS,
+  fwhm_cv_nom,
   weighted = FALSE,
-  const_fwhm = NA,
   refine_CV0 = FALSE,
   correct_overlap = FALSE
 ) {
@@ -783,35 +700,23 @@ fit1D <- function(
   }
 
   # First pass
-  lower = NULL
-  s2p = sqrt(2*pi)
-  sigma0 = 0.7/2.355
-  A0 = s2p * sigma0 * max(mMS)
+  sigma0 = fwhm_cv_nom/2.355
+  A0 = sqrt(2*pi) * sigma0 * max(mMS)
+  lower = c(
+    mu    = CV0 - dCV/10,
+    sigma = 0.8 * sigma0,
+    A     = 0.5 * A0
+  )
   start = c(
-    mu    = CVf[which.max(mMS)],
+    mu    = CV0,
     sigma = sigma0,
     A     = A0
   )
-  upper = NULL
-  if(!is.na(const_fwhm)) {
-    sigma0 = const_fwhm/2.355
-    A0 = s2p * sigma0 * max(mMS)
-    lower = c(
-      mu    = CV0 - dCV/10,
-      sigma = 0.8 * sigma0,
-      A     = 0.5 * A0
-    )
-    start = c(
-      mu    = CV0,
-      sigma = sigma0,
-      A     = A0
-    )
-    upper = c(
-      mu    = CV0 + dCV/10,
-      sigma = 1.2 * sigma0,
-      A     = 1.5 * A0
-    )
-  }
+  upper = c(
+    mu    = CV0 + dCV/10,
+    sigma = 1.2 * sigma0,
+    A     = 1.5 * A0
+  )
 
   res = try(
     nls(
@@ -863,8 +768,9 @@ fit2D <- function(
   mz0, CV0,
   dmz, dCV,
   mz, CV, MS,
+  fwhm_mz_nom,
+  fwhm_cv_nom,
   weighted = FALSE,
-  const_fwhm = NA,
   refine_CV0 = FALSE,
   correct_overlap = FALSE
 ) {
@@ -909,8 +815,8 @@ fit2D <- function(
 
   # Normal fit
   grid = expand.grid(x = mzloc, y = CVf)
-  x = grid$x
-  y = grid$y
+  x = as.vector(grid$x)
+  y = as.vector(grid$y)
   z = as.vector(t(MSloc))
 
   weights = rep(1,length(z))
@@ -922,48 +828,31 @@ fit2D <- function(
 
   # First pass
   maxz = which.max(z)
-
-  if(!is.na(const_fwhm)) {
-    sx0 = 0.2
-    sy0 = const_fwhm / 2.355
-    A0  = 2 * pi * sx0 * sy0 * max(z)
-    lower = c(
-      mx  = x[maxz] - dmz / 2,
-      sx  = sx0 / 4,
-      my  = CV0 - dCV / 10,
-      sy  = 0.8 * sy0,
-      A   = 0.5 * A0
-    )
-    start = c(
-      mx  = x[maxz],
-      sx  = sx0,
-      my  = CV0,
-      sy  = sy0,
-      A   = A0
-    )
-    upper = c(
-      mx  = x[maxz] + dmz / 2,
-      sx  = 4 * sx0,
-      my  = CV0 + dCV / 10,
-      sy  = 1.2 * sy0,
-      A   = 1.5 * A0
-    )
-
-  } else {
-    sx0 = 0.2
-    sy0 = 0.7/2.355
-    A0  = 2 * pi * sx0 * sy0 * max(z)
-
-    lower = NULL
-    start = c(
-      mx  = x[maxz],
-      sx  = sx0,
-      my  = y[maxz],
-      sy  = sy0,
-      A   = A0
-    )
-    upper = NULL
-  }
+  mx = x[maxz]
+  sx0 = fwhm_mz_nom / 2.355
+  sy0 = fwhm_cv_nom / 2.355
+  A0  = 2 * pi * sx0 * sy0 * max(z)
+  lower = c(
+    mx  = mx - dmz / 2,
+    sx  = sx0 / 4,
+    my  = CV0 - dCV / 10,
+    sy  = 0.8 * sy0,
+    A   = 0.5 * A0
+  )
+  start = c(
+    mx  = mx,
+    sx  = sx0,
+    my  = CV0,
+    sy  = sy0,
+    A   = A0
+  )
+  upper = c(
+    mx  = mx + dmz / 2,
+    sx  = 4 * sx0,
+    my  = CV0 + dCV / 10,
+    sy  = 1.2 * sy0,
+    A   = 1.5 * A0
+  )
 
   res = try(
     nls(

@@ -4,17 +4,17 @@
 #   to store m/z and u_m/z from 2D fit
 # - Integrate fast method (fit_dim = 0)
 # - Added data path management
-# - Added optional tag (userTag):
-#   presently defined by fit_dim value,
+# - Added optional tag ('userTag'):
+#   presently defined by 'fit_dim' value,
 #   to avoid overwriting of results files
-#   when trying different fit_dim options
+#   when trying different 'fit_dim' options
 # 2020_07_20 [PP]
 # - Replaced '=' by '_' in userTag (Windows pb.)
 # - Reparameterized gaussians with area replacing height
 #   (avoids covariances in estimation of u_area )
 # - Suppressed 'rho' param in 2D gaussians
 # 2020_07_21 [PP]
-# - Corrected typo in calculation of u_area in getPars1D
+# - Corrected typo in calculation of u_area in 'getPars1D()'
 # 2020_07_24 [PP]
 # - Save ctrl params as metadata
 # 2020_09_24 [PP]
@@ -22,55 +22,75 @@
 # 2021_03_15 [PP]
 # - Adapted code to FT-ICR MS files:
 #   * new 'ms_type' flag
-#   * new getMS function to handle ms_type cases
-#   * new trapz function to handle MS integration
+#   * new 'getMS()' function to handle ms_type cases
+#   * new 'trapz()' function to handle MS integration
 #     with irregular mz grids
-#   * adapted fit1D and fit2D to use trapz
+#   * adapted 'fit1D()' and 'fit2D()' to use 'trapz()'
 # 2021_04_06 [PP]
 # - Added baseline correction function
 #   * new 'baseline_cor' flag
-#   * new bslCorMS function
+#   * new 'bslCorMS()' function
+# 2021_04_07 [PP]
+# - Changed management of peak specifications to facilitate
+#   modifications of apparatus characteristics
+#   * new 'getPeakSpecs()' functions
+#   * changed 'const_fwhm' to 'fwhm_cv_nom'
+#   * new 'fwhm_mz_nom' variable
+#   * changed logic on fwhm fit constraints
+#     Fit is now always constrained in fit1D_MS(),
+#     fit_1D() and fit_2D()
 #
 #===============================================
 #
 ## Load packages and functions ####
 source('functions.R')
 
-# User configuration params ####
+#----------------------------------------------------------
+# User configuration params -------------------------------
+#----------------------------------------------------------
+
+ms_type   = c('esquire','fticr')[2]
 
 taskTable = 'Test2/files_quantification_2018AA.csv'
 tgTable   = 'Test2/targets_paper_renew.csv'
 
-ms_type = c('esquire','fticr')[2]
+fit_dim  = 1    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 
 filter_results = TRUE
-fwhm_mz_min = 0.1
-fwhm_mz_max = 0.5
-fwhm_cv_min = 0.5
-fwhm_cv_max = 1.5
-area_min    = 10
+area_min       = 10
+
+userTag = paste0('fit_dim_',fit_dim)
 
 save_figures = TRUE
 plot_maps    = FALSE
 
-fit_dim  = 1    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
-fallback = TRUE # Fallback on fit_dim=1 fit if 2D fit fails
+#----------------------------------------------------------
+# Technical params (change only if you know why...) -------
+#----------------------------------------------------------
 
-baseline_cor = 'global+median' # Constant baseline over all matrix; median estimator
-correct_overlap = FALSE
-weighted_fit = FALSE
-refine_CV0   = TRUE
-const_fwhm   = ifelse(fit_dim == 0,NA,0.7) # Central value for FWHM constraint
+fallback        = TRUE   # Fallback on fit_dim=1 fit if 2D fit fails
+correct_overlap = FALSE  # Experimental
+weighted_fit    = FALSE
+refine_CV0      = TRUE
+debug           = FALSE  # Stop after first task
 
-dmz = 0.1       # Width of mz window around
-                # exact mz for signal averaging
-dCV = 1.5       # Width of CV window around
-                # reference CV for peak fit
+#----------------------------------------------------------
+# Get apparatus-dependent specifications
+#----------------------------------------------------------
 
-debug = FALSE   # Stop after first task
+peakSpecs   = getPeakSpecs(ms_type)
 
-userTag = paste0('fit_dim_',fit_dim)
+fwhm_mz_min = peakSpecs$fwhm_mz_min
+fwhm_mz_max = peakSpecs$fwhm_mz_max
+fwhm_mz_nom = peakSpecs$fwhm_mz_nom
+dmz         = peakSpecs$dmz
 
+fwhm_cv_min = peakSpecs$fwhm_cv_min
+fwhm_cv_max = peakSpecs$fwhm_cv_max
+fwhm_cv_nom = peakSpecs$fwhm_cv_nom
+dCV         = peakSpecs$dCV
+
+# Gather run params for reproducibility
 ctrlParams = list(
   userTag        = userTag,
   ms_type        = ms_type,
@@ -79,19 +99,24 @@ ctrlParams = list(
   filter_results = filter_results,
   fwhm_mz_min    = fwhm_mz_min,
   fwhm_mz_max    = fwhm_mz_max,
+  fwhm_mz_nom    = fwhm_mz_nom,
+  dmz            = dmz,
   fwhm_cv_min    = fwhm_cv_min,
   fwhm_cv_max    = fwhm_cv_max,
+  fwhm_cv_nom    = fwhm_cv_nom,
+  dCV            = dCV,
   area_min       = area_min,
   fit_dim        = fit_dim,
   fallback       = fallback,
   weighted_fit   = weighted_fit,
   refine_CV0     = refine_CV0,
-  const_fwhm     = const_fwhm,
-  dmz            = dmz,
-  dCV            = dCV
+  baseline_cor   = baseline_cor
 )
 
-# Check sanity of parameters ####
+#----------------------------------------------------------
+# Check sanity of parameters ------------------------------
+#----------------------------------------------------------
+
 assertive::assert_all_are_existing_files(dataRepo)
 assertive::assert_all_are_existing_files(figRepo)
 assertive::assert_all_are_existing_files(tabRepo)
@@ -133,6 +158,7 @@ if(!assertive::is_positive(dmz))
 assertive::assert_is_numeric(dCV)
 if(!assertive::is_positive(dCV))
   stop(paste0('Erreur: dCV =',dCV,' should be positive'))
+#----------------------------------------------------------
 
 
 # Get targets ####
@@ -169,7 +195,7 @@ for(task in 1:nrow(Tasks)) {
       dataPath = Tasks[task,'path']
 
   # Build tag
-  tag = makeTag(CVTable, msTable, userTag)
+  tag  = makeTag(CVTable, msTable, userTag)
 
   # Get MS ####
   file = paste0(dataRepo, dataPath, msTable)
@@ -187,7 +213,7 @@ for(task in 1:nrow(Tasks)) {
     sep = '\t',
     stringsAsFactors = FALSE
   )
-  CV  = rev(CV0[, 4]) # We want increasing CVs
+  CV = rev(CV0[, 4]) # We want increasing CVs
 
   ## Ensure CV & MS tables conformity
   t0   = Tasks[task,'t0']
@@ -258,9 +284,10 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, CV, MS,
+        fwhm_mz_nom = fwhm_mz_nom,
+        fwhm_cv_nom = fwhm_cv_nom,
         weighted = weighted_fit,
         refine_CV0 = refine_CV0,
-        const_fwhm = const_fwhm,
         correct_overlap = correct_overlap
       )
       dimfit = 2
@@ -270,9 +297,10 @@ for(task in 1:nrow(Tasks)) {
           mz0, CV0,
           dmz, dCV,
           mz, CV, MS,
+          fwhm_cv_nom = fwhm_cv_nom,
+          fwhm_mz_nom = fwhm_mz_nom,
           weighted = weighted_fit,
           refine_CV0 = refine_CV0,
-          const_fwhm = const_fwhm,
           correct_overlap = correct_overlap
         )
         dimfit = 1
@@ -284,21 +312,21 @@ for(task in 1:nrow(Tasks)) {
         mz0, CV0,
         dmz, dCV,
         mz, CV, MS,
+        fwhm_cv_nom = fwhm_cv_nom,
         weighted = weighted_fit,
         refine_CV0 = refine_CV0,
-        const_fwhm = const_fwhm,
         correct_overlap = correct_overlap
       )
       dimfit = 1
 
     } else {
-      # 1D fit of peak; fixed CV
+      # 1D m/z fit of peak; fixed CV
       fitOut = fit1D_MS(
         mz0, CV0,
         dmz, dCV,
         mz, CV, MS,
         weighted = weighted_fit,
-        const_fwhm = const_fwhm
+        fwhm_mz_nom = fwhm_mz_nom
       )
       dimfit = 0
     }
@@ -365,19 +393,23 @@ for(task in 1:nrow(Tasks)) {
     # Plot data and fit results
     pars = paste0(
       ifelse (warning, '** WARNING **\n','') ,
-      ifelse(dimfit > 0,
+      ifelse(dimfit == 1,
              '',
              paste0('m/z = ', signif(mzopt,6),'\n')),
       ifelse(dimfit == 0,
              '',
              paste0('CV = ', signif(cvopt,4),'\n')),
-      ifelse(dimfit > 0,
-             paste0('FWHM = ', signif(fwhm_cv,3),'\n'),
-             paste0('FWHM = ', signif(fwhm_mz,3),'\n')),
+      ifelse(dimfit ==1,
+             '',
+             paste0('FWHM_m/z = ', signif(fwhm_mz,3),'\n')),
+      ifelse(dimfit ==0,
+             '',
+             paste0('FWHM_CV = ', signif(fwhm_cv,3),'\n')),
       'Area = ', signif(area,3)
     )
 
-    print(coefficients(fitOut$res))
+    if (class(fitOut$res) != "try-error")
+      print(coefficients(fitOut$res))
 
     plotPeak(
       mz, CV, MS,
@@ -458,9 +490,6 @@ for(task in 1:nrow(Tasks)) {
       dev.off()
     }
   }
-
-  # res = resu[!is.na(resu[,'CV']),]
-  # print(res)
 
   # Save results
   write.csv(resu,
