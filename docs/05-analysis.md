@@ -5,7 +5,7 @@ file, the series of metabolites given in `tgTable` is analyzed. The aim
 of the analysis is to integrate the peak (*i.e.*, to estimate the area)
 corresponding to each metabolite.
 
-### Peak model
+## Peak model
 
 In the present version, a Gaussian peak shape is used. The formula of a
 Gaussian function is \[
@@ -38,7 +38,7 @@ It turns out that we need three types of fit:
 -   1D fit in the *m/z* space, assuming that the *CV* value is the
     `CV_ref` given in the `tgTable`
 
-### Fit algorithm
+## Fit algorithm
 
 We use a non-linear (weighted) least-squares algorithm to estimate the
 parameters of the model: the `nls` function of the `stats` package [1].
@@ -49,7 +49,7 @@ defined below. For the 2D fits, we implemented a ‘fallback’ strategy to
 converge. The effective dimension of the fit is reported in the results
 tables.
 
-### Control variables
+## Control variables
 
 The choice of fit type is set using the `fit_dim` variable. The
 important user configuration parameters are listed within the first line
@@ -138,7 +138,7 @@ changed without caution.
 
 -   `debug`: (logical) stop the analysis after the first target.
 
-### Outputs
+## Outputs
 
 The output files can be found in the following repositories:
 
@@ -151,7 +151,7 @@ your data are (MS\_file = ‘C0\_AS\_DV-1800\_1.d.ascii’, DMS\_file =
 ‘Fichier\_Dims 20190517-000000.txt’), and if `fit_dim=2`,  
 one has `prefix = 20190517_C0_AS_DV-1800_1_fit_dim_2_`.
 
-#### Figures
+### Figures
 
 For each task and target, a figure is generated (on screen and as a file
 if `save_figures=TRUE`), showing the 2D location of the peak and its
@@ -180,7 +180,7 @@ prefix and the target name.
 -   Same legend as for the 2D fit, except for the right panel, which
     represents the *m/z* profile of the peak.
 
-#### Tables
+### Tables
 
 For each experiments/task associated with (MS\_file, DMS\_file), three
 comma delimited ‘.csv’ files are generated: `prefix_results.csv`,
@@ -194,7 +194,7 @@ variables for this task.
 
 -   In output files, the missing data are represented by `NA`s.
 
-##### Fit results: `XXX_results.csv`
+#### Fit results: `XXX_results.csv`
 
 -   the first 4 columns are copies of the `tgTable` data:
 
@@ -208,12 +208,14 @@ variables for this task.
 
     | m/z | u\_m/z | CV  | u\_CV | FWHM\_m/z | u\_FWHM\_m/z | FWHM\_CV | u\_FWHM\_CV |
     |-----|--------|-----|-------|-----------|--------------|----------|-------------|
+    |     |        |     |       |           |              |          |             |
 
 -   the next 2 columns are the results for the optimized Area values,
     and corresponding uncertainty.
 
     | Area | u\_Area |
     |------|---------|
+    |      |         |
 
 -   finally, you will find the `fit_dim` value, the `dilu` index, and
     the `tag` which is a concatenation of date + MS\_filename + fit\_dim
@@ -221,8 +223,9 @@ variables for this task.
 
     | fit\_dim | dilu | tag |
     |----------|------|-----|
+    |          |      |     |
 
-##### Peak profiles: `XXX_fit.csv` and `XXX_XIC.csv`
+#### Peak profiles: `XXX_fit.csv` and `XXX_XIC.csv`
 
 The `XXX_XIC.csv` file contains the *time*/*CV* data profiles integrated
 over *m/z* for the compounds in `tgTable` (`fit_dim=1,2`) or the *m/z*
@@ -234,11 +237,13 @@ data profile (`fit_dim=0`) for the species in `tgTable`. The
 
     | time | CV  |
     |------|-----|
+    |      |     |
 
     For `fit_dim=0`, the first column is *m/z*
 
     | m/z |
     |-----|
+    |     |
 
 -   the following columns are headed by the name of the compound and
     contain the corresponding profiles

@@ -6,7 +6,7 @@ The peak parameters are plotted as a function of `dilu`. If `dilu`
 contains the experiment index, `checkRep.R` can be used to assess the
 repeatability of an analysis.
 
-### Control variables
+## Control variables
 
 The job is defined by a few parameters.
 
@@ -42,9 +42,9 @@ The job is defined by a few parameters.
 
 -   `makePlots`: (logical) generate the plots, or not…
 
-### Outputs
+## Outputs
 
-#### Figures
+### Figures
 
 Figures summarizing the set of data for all pairs of species and a
 summary of the mean values and their uncertainty are generated.
@@ -73,7 +73,7 @@ saved to disk.
 **Mean values and uncertainties for a repeatability analysis**
 ![](figs/fig4.png)
 
-#### Tables
+### Tables
 
 The name of the file is a concatenation of the date, time, `userTag`,
 and ‘\_compilation.csv’. It contains all the collected results, with the
@@ -84,11 +84,11 @@ following additions:
 
     | ratio | u\_ratio |
     |-------|----------|
+    |       |          |
 
 -   a set of lines with tag “Mean”, containing for each target compound
     the mean of the properties over the set of experiments. Weighted
-    means are used, with weights estimated by the Cochran’s ANOVA method
-    [2].
+    means are used, with weights estimated by the Cochran’s ANOVA method [1].
 
     The observed variance is decomposed in two terms: the variance due
     to the parametric uncertainty on the property (estimated in
@@ -97,5 +97,12 @@ following additions:
     observed variance minus the mean of the parametric variances, with a
     positivity constraint. The variance for a datum is then the sum of
     its parametric variance and the repeatability variance. The weights
-    are the normalized reciprocal variances [3].
+    are the normalized reciprocal variances [2].
 
+## References
+
+[1] C. Rivier *et al.* (2014) *Accredit. Qual. Assur.* **19**:269–274
+[doi](doi:https://doi.org/10.1007/s00769-014-1066-3)
+
+[2] Inverse variance weighting in
+[Wikipedia](https://en.wikipedia.org/wiki/Inverse-variance_weighting)

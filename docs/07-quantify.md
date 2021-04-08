@@ -48,6 +48,7 @@ and ‘\_quantif.csv’
 
 | Name | Int | Slo | Slo0 | LOD |
 |------|-----|-----|------|-----|
+|      |     |     |      |     |
 
 where
 
