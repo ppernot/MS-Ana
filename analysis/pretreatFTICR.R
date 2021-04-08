@@ -22,11 +22,11 @@ compMode  = c('grid','targets','grid+targets')[3]
 ## Grid specifications
 mzMin     = 70
 mzMax     = 250
-dmz       = 0.002
+dmz       = 0.001
 
 ## Targets specifications
 tgTable   = 'Test_FTICR_2/targets_list.csv'
-dmzTarget = 1 # Delta m/z to keep around target
+dmzTarget = 0.5 # Delta m/z to keep around target
 
 ## Short run to check ?
 test      = FALSE

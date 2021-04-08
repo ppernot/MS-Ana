@@ -1080,7 +1080,7 @@ compressMS = function(file_in,
 
     if(grepl('grid',compMode)) {
       # Regular grid
-
+      cat('>>> Grid selection\n')
       mz0 = seq(
         round(max(mzMin,min(mz))),
         round(min(mzMax,max(mz))),
@@ -1099,6 +1099,7 @@ compressMS = function(file_in,
     if(grepl('targets',compMode) &
        !any(is.na(targets))) {
       # Targets-based grid
+      cat('>>> Targets selection\n')
 
       mz0 = mz[selClosest]
       sel = c()
@@ -1135,7 +1136,7 @@ compressMS = function(file_in,
         cat('>>> Size of filtered MS in memory:',
             format(object.size(MS1),units='Mb'),'\n')
       if(test) {
-        stop(call. = FALSE)
+        stop('>>> Stopped by test=TRUE',call. = FALSE)
       }
       ## Save to file
       data.table::fwrite(

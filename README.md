@@ -6,6 +6,7 @@ Philippe MAITRE and Pascal PERNOT
 -   [Purpose](#purpose)
 -   [Project structure](#project-structure)
 -   [Workflow](#workflow)
+    -   [0- Pretreatment](#pretreatment)
     -   [1- Analysis](#analysis)
     -   [2- Quantification](#quantification)
 -   [Input files](#input-files)
@@ -16,6 +17,7 @@ Philippe MAITRE and Pascal PERNOT
     -   [`quantTable`](#quanttable)
         -   [Structure](#structure-2)
 -   [Scripts](#scripts)
+    -   [`pretreatFTICR.R`](#pretreatfticr.r)
     -   [`analysis.R`](#analysis.r)
         -   [Peak model](#peak-model)
         -   [Fit algorithm](#fit-algorithm)
@@ -65,6 +67,11 @@ complex projects, the MS files can be placed in sub-folders of `data`,
 and their paths are given in the `taskTable` input file.
 
 # Workflow
+
+## 0- Pretreatment
+
+1.  FT-ICR MS files should be compressed using `pretreatFTICR.R` to
+    enable analysis
 
 ## 1- Analysis
 
@@ -208,9 +215,77 @@ where
 
 # Scripts
 
-## `analysis.R`
+## `pretreatFTICR.R`
 
-(last version from 2020, July 16)
+Raw FT-ICR DMS files are very large and are painful to analyse directly.
+Two reduction methods can be used and combined:
+
+1.  filtering the data to match as well as possible a predefined regular
+    grid
+
+2.  keeping only the data that match a list of targets
+
+Combining both methods might enable to reduce the MS size by nearly 90%,
+in the usual applications.
+
+The script is controlled by the following parameters:
+
+    #====================================================
+    # User configuration params =========================
+    #====================================================
+
+    ## Data and results directories
+    origMsDir = 'Test_FTICR_2/FTICR'
+    compMsDir = 'Test_FTICR_2/FTICR_compressed'
+    ms_type   = 'fticr'
+
+    ## Compress mode
+    compMode  = c('grid','targets','grid+targets')[3]
+
+    ## Grid specifications
+    mzMin     = 70
+    mzMax     = 250
+    dmz       = 0.001
+
+    ## Targets specifications
+    tgTable   = 'Test_FTICR_2/targets_list.csv'
+    dmzTarget = 0.5 # Delta m/z to keep around target
+
+    ## Short run to check ?
+    test      = FALSE
+
+where
+
+-   `origMsDir`: (string) is the path to a directory containing the
+    files to treat (all files within the directory will be treated).
+
+-   `compMsDir`: (string) is the path to a directory where the
+    compressed files will be stored.
+
+-   `ms_type`: (string) is the type of MS to treat. Only `fticr` at the
+    moment.
+
+-   `compMode`: (string) compression modality, which can be `grid`,
+    `targets` or their combination `grid+targets`.
+
+-   `mzMin`, `mzMax` and `dmz`: (numbers) define the regular grid used
+    for grid selection.
+
+-   `tgTable`: (string) is the path to the targets file used for targets
+    selection.
+
+-   `dmzTarget`: (number) is the half-width of the m/z interval to keep
+    around a target. The interval is centered on `ms_ref` vales in
+    `tgTable`. The width should be large enough to not miss the peaks,
+    but small enough for efficient compression…
+
+-   `test`: (logical) test run only, to check if data are OK.
+
+**Note**: it is best to store the spectra as compressed .gz files. The
+disp space is well reduced and all scripts can handle them
+transparently.
+
+## `analysis.R`
 
 For each DMS-MS/MS experiment as given in a series in the `taskTable`
 file, the series of metabolites given in `tgTable` is analyzed. The aim
@@ -312,6 +387,9 @@ where:
 
     and areas smaller than `area_min`. The `fwhm_xxx` parameters depend
     on `ms_type` and they are defined in the `getPeakSpecs()` function.
+
+-   `userTag`: (string) a tag that will be added to the names of the
+    results files. Default uses fit-dim.
 
 -   `save_figures`: (logical) save the plots on disk
 

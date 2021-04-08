@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="{{ site.lang | default: "en-US" }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+{% seo %}
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+    <script src="{{ '/assets/js/scale.fix.js' | relative_url }}"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <style>
+      code {
+       background-color: #FFDAB9;
+       padding-left: 5px;
+       padding-right: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1 class="header">{{ site.title | default: site.github.repository_name }}</h1>
+        <ul>
+          <li><a href="index.html">Introduction</a></li>
+          <li><a href="01-project.html">Project</a></li>
+          <li><a href="02-workflow.html">Workflow</a></li>
+          <li><a href="03-inputs.html">Inputs</a></li>
+          <li><a href="04-pretreat.html">Pre-Treat</a></li>
+          <li><a href="05-analysis.html">Analysis</a></li>
+          <li><a href="06-checkrep.html">CheckRep</a></li>
+          <li><a href="07-quantify.html">Quantify</a></li>
+          <li><a class="buttons github" href="{{ site.github.repository_url }}">View On GitHub</a></li>
+        </ul>
+
+        {% if site.github.is_project_page %}
+          <p class="header">Maintained by <a class="header name" href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
+        {% endif %}
+
+      </header>
+
+      <section>
+        {{ content }}
+      </section>
+
+      <footer>
+        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+  </body>
+</html>
