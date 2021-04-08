@@ -200,6 +200,7 @@ variables for this task.
 
     | Name | Comments | m/z\_ref | CV\_ref |
     |------|----------|----------|---------|
+    |      |          |          |         |
 
 -   the next 8 columns correspond to the position, width and uncertainty
     values of the optimized Gaussian in the m/z and CV dimensions
