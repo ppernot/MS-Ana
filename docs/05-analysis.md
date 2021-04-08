@@ -9,18 +9,19 @@ corresponding to each metabolite.
 
 In the present version, a Gaussian peak shape is used. The formula of a
 Gaussian function is ![ G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right) ](https://latex.codecogs.com/png.latex?%0AG%28x%3Ba%2Cx_0%2C%5Csigma%29%3D%5Cfrac%7Ba%7D%7B%5Csqrt%7B2%5Cpi%7D%5Csigma%7D%0A%5Cexp%5Cleft%28-%5Cfrac%7B1%7D%7B2%7D%5Cleft%28%5Cfrac%7Bx-x_0%7D%7B%5Csigma%7D%5Cright%29%5E2%5Cright%29%0A " G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right) ")
+
 where ![a](https://latex.codecogs.com/png.latex?a "a") is the area,
 ![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") is the position
 of the peak, and
-![\\\\sigma](https://latex.codecogs.com/png.latex?%5C%5Csigma "\\sigma")
+![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\sigma")
 is related to the full width at maximum
 (![fwhm](https://latex.codecogs.com/png.latex?fwhm "fwhm")) by
-![fwhm = 2\\\\sqrt{2\\\\log(2)} \\\\sigma](https://latex.codecogs.com/png.latex?fwhm%20%3D%202%5C%5Csqrt%7B2%5C%5Clog%282%29%7D%20%5C%5Csigma "fwhm = 2\\sqrt{2\\log(2)} \\sigma").
+![fwhm = 2\\sqrt{2\\log(2)}\\sigma](https://latex.codecogs.com/png.latex?fwhm%20%3D%202%5Csqrt%7B2%5Clog%282%29%7D%20%5Csigma "fwhm = 2\\sqrt{2\\log(2)} \\sigma").
 Upon the fit process of the data, the area
 (![a](https://latex.codecogs.com/png.latex?a "a")) is optimized, as well
 as the peak’s position and width
 (![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") and
-![\\\\sigma](https://latex.codecogs.com/png.latex?%5C%5Csigma "\\sigma")).
+![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\sigma")).
 
 From the two dimensional data (*m/z*, *CV*), the area can be extracted
 using a 2D fit where the fit function is the product of two Gaussian
