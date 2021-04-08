@@ -8,9 +8,7 @@ corresponding to each metabolite.
 ## Peak model
 
 In the present version, a Gaussian peak shape is used. The formula of a
-Gaussian function is \[
-G(x;a,x\_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma}
-\\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x\_0}{\\sigma}\\right)^2\\right)\]
+Gaussian function is ![ G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right) ](https://latex.codecogs.com/png.latex?%0AG%28x%3Ba%2Cx_0%2C%5Csigma%29%3D%5Cfrac%7Ba%7D%7B%5Csqrt%7B2%5Cpi%7D%5Csigma%7D%0A%5Cexp%5Cleft%28-%5Cfrac%7B1%7D%7B2%7D%5Cleft%28%5Cfrac%7Bx-x_0%7D%7B%5Csigma%7D%5Cright%29%5E2%5Cright%29%0A " G(x;a,x_0,\sigma)=\frac{a}{\sqrt{2\pi}\sigma} \exp\left(-\frac{1}{2}\left(\frac{x-x_0}{\sigma}\right)^2\right) ")
 where ![a](https://latex.codecogs.com/png.latex?a "a") is the area,
 ![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") is the position
 of the peak, and
