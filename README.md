@@ -1,39 +1,41 @@
 MS-Ana
 ================
 Philippe MAITRE and Pascal PERNOT
-2020-09-24
+2021-04-08
 
-  - [Purpose](#purpose)
-  - [Data organization](#data-organization)
-  - [Workflow](#workflow)
-  - [Input files](#input-files)
-      - [`taskTable`](#tasktable)
-          - [Structure](#structure)
-      - [`tgTable`](#tgtable)
-          - [Structure](#structure-1)
-      - [`quantTable`](#quanttable)
-          - [Structure](#structure-2)
-  - [Scripts](#scripts)
-      - [`analysis.R`](#analysis.r)
-          - [Peak model](#peak-model)
-          - [Fit algorithm](#fit-algorithm)
-          - [Control variables](#control-variables)
-          - [Outputs](#outputs)
-      - [`checkRep.R`](#checkrep.r)
-          - [Control variables](#control-variables-1)
-          - [Outputs](#outputs-1)
-      - [`quantify.R`](#quantify.r)
-          - [Control variables](#control-variables-2)
-          - [Outputs](#outputs-2)
-  - [References](#references)
+-   [Purpose](#purpose)
+-   [Project structure](#project-structure)
+-   [Workflow](#workflow)
+    -   [1- Analysis](#analysis)
+    -   [2- Quantification](#quantification)
+-   [Input files](#input-files)
+    -   [`taskTable`](#tasktable)
+        -   [Structure](#structure)
+    -   [`tgTable`](#tgtable)
+        -   [Structure](#structure-1)
+    -   [`quantTable`](#quanttable)
+        -   [Structure](#structure-2)
+-   [Scripts](#scripts)
+    -   [`analysis.R`](#analysis.r)
+        -   [Peak model](#peak-model)
+        -   [Fit algorithm](#fit-algorithm)
+        -   [Control variables](#control-variables)
+        -   [Outputs](#outputs)
+    -   [`checkRep.R`](#checkrep.r)
+        -   [Control variables](#control-variables-1)
+        -   [Outputs](#outputs-1)
+    -   [`quantify.R`](#quantify.r)
+        -   [Control variables](#control-variables-2)
+        -   [Outputs](#outputs-2)
+-   [References](#references)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3699092.svg)](https://doi.org/10.5281/zenodo.3699092)
 
 # Purpose
 
-TBD…
+Analysis and quantification for DMS spectra.
 
-# Data organization
+# Project structure
 
 The project is organized into the following folders structure:
 
@@ -64,6 +66,8 @@ and their paths are given in the `taskTable` input file.
 
 # Workflow
 
+## 1- Analysis
+
 1.  put MS files in `data` folder or a sub-folder
 
 2.  put DMS files in `data`
@@ -71,16 +75,18 @@ and their paths are given in the `taskTable` input file.
 3.  create `taskTable` and `tgTable` input files in `data` folder
 
 4.  edit and run `analysis.R`
-    
-      - enter the file paths to the `taskTable` and `tgTable` files  
-      - choose the type of peak fit (variable `fit_dim`)
 
-5.  create `quantTable` in `data` folder
+    -   enter the file paths to the `taskTable` and `tgTable` files  
+    -   choose the type of peak fit (variable `fit_dim`)
 
-6.  edit and run `checkRep.R` and/or `quantify.R`
-    
-      - enter the file paths to the `taskTable` and `quantTable` files  
-      - choose the type of peak fit (variable `fit_dim`) used in the
+## 2- Quantification
+
+1.  create `quantTable` in `data` folder
+
+2.  edit and run `checkRep.R` and/or `quantify.R`
+
+    -   enter the file paths to the `taskTable` and `quantTable` files  
+    -   choose the type of peak fit (variable `fit_dim`) used in the
         analysis step
 
 # Input files
@@ -89,7 +95,7 @@ Three input files (formally named `taskTable`, `tgTable` and
 `quantTable`) are used by the set of scripts :
 
 | Script \\ Input | `taskTable` | `tgTable` | `quantTable` |
-| --------------- | ----------- | --------- | ------------ |
+|-----------------|-------------|-----------|--------------|
 | `analysis.R`    | X           | X         |              |
 | `checkRep.R`    | X           |           | X            |
 | `quantify.R`    | X           |           | X            |
@@ -104,29 +110,29 @@ or Rstudio (safer).
 ### Structure
 
 | MS\_file                   | DMS\_file                         | t0   | CV0 | dilu | Path                                            |
-| -------------------------- | --------------------------------- | ---- | --- | ---- | ----------------------------------------------- |
+|----------------------------|-----------------------------------|------|-----|------|-------------------------------------------------|
 | C0\_AS\_DV-1800\_1.d.ascii | Fichier\_Dims 20190517-000000.txt | 0.08 | 6   | 0    | Esquire\_MSMS\_Data/2019\_A\_Voir/20190517\_AA/ |
 
 Where:
 
-  - `MS_file` is an ASCII file, extracted using DATAANALYSIS. So far,
+-   `MS_file` is an ASCII file, extracted using DATAANALYSIS. So far,
     only the ESQUIRE data files extracted using the `profile` option can
     be handled. It is stored in `data` or a sub-folder of `data` defined
     by `Path`.
 
-  - `DMS_file` is the corresponding DMS file. It is expected to be in
+-   `DMS_file` is the corresponding DMS file. It is expected to be in
     the `data` folder.
 
-  - `t0` and `CV0` are used to convert the ESQUIRE time *t* values into
+-   `t0` and `CV0` are used to convert the ESQUIRE time *t* values into
     DMS *CV* values.
 
-  - `dilu` was initially meant to be the dilution factor of the standard
+-   `dilu` was initially meant to be the dilution factor of the standard
     metabolites when spiked into a plasma (see checkRep). When you
     perform another type of experiment, you can use  
     `dilu` as an index to specify, for example, the flow-rate of the
     modifier, the day of the experiment, the set of samples…
 
-  - `Path` allows you to organize your data within the `../data/`
+-   `Path` allows you to organize your data within the `../data/`
     folder. Note that the DMS\_files must be in the `../data` folder. In
     the present example, only the MS file is expected to be found in the
     following folder:
@@ -134,10 +140,10 @@ Where:
 
 **Notes**
 
-  - lines starting with “\# “ are not processed and treated as comments
+-   lines starting with “\#” are not processed and treated as comments
     lines
 
-  - the date extracted from `DMS_file` (here ‘20190517’)  
+-   the date extracted from `DMS_file` (here ‘20190517’)  
     and the root of the `MS_file` name (here ‘C0\_AS\_DV-1800\_1’) are
     combined to tag the output figures and tables (*e.g.*, ‘20190517\_
     C0\_AS\_DV-1800\_1.results’)
@@ -153,24 +159,24 @@ or Rstudio (safer).
 ### Structure
 
 | Name      | Comments  | m/z\_ref | CV\_ref |
-| --------- | --------- | -------- | ------- |
-| \# Gly-AA | C2H5NO2H  | 76       | \-10.7  |
-| Ala-AA    | 90.054955 | 90.1     | \-7.6   |
+|-----------|-----------|----------|---------|
+| \# Gly-AA | C2H5NO2H  | 76       | -10.7   |
+| Ala-AA    | 90.054955 | 90.1     | -7.6    |
 
 where:
 
-  - `Name` is the given name of a metabolite,
+-   `Name` is the given name of a metabolite,
 
-  - `Comments` is presently not used
+-   `Comments` is presently not used
 
-  - `m/z_ref` is the expected (approximate) *m/z* value
+-   `m/z_ref` is the expected (approximate) *m/z* value
 
-  - `CV_ref` is the expected *CV* value (it can be omitted)
+-   `CV_ref` is the expected *CV* value (it can be omitted)
 
 **Notes**
 
-  - lines starting with “\# “ will be considered as comment lines. In
-    the present example, Glycine will not be analyzed.
+-   lines starting with “\#” will be considered as comment lines. In the
+    present example, Glycine will not be analyzed.
 
 ## `quantTable`
 
@@ -183,22 +189,22 @@ or Rstudio (safer).
 ### Structure
 
 | Name      | IS       | CAA\_Plasma | CAA\_ref | CIS\_ref |
-| --------- | -------- | ----------- | -------- | -------- |
+|-----------|----------|-------------|----------|----------|
 | \# Gly-AA | Gly-13C2 | 11.75       | 1750     | 26.7     |
 | Ala-AA    | Ala-13C2 | 16.15       | 1750     | 20       |
 
 where
 
-  - `Name` is the name of the compound, as used in `tgTable`
+-   `Name` is the name of the compound, as used in `tgTable`
 
-  - `IS` is the name of the internal spiking compound. It should also be
+-   `IS` is the name of the internal spiking compound. It should also be
     present in `tgTable`
 
-  - `CAA_Plasma` **???**
+-   `CAA_Plasma` **???**
 
-  - `CAA_ref` **???**
+-   `CAA_ref` **???**
 
-  - `CIS_ref` **???**
+-   `CIS_ref` **???**
 
 # Scripts
 
@@ -214,26 +220,21 @@ corresponding to each metabolite.
 ### Peak model
 
 In the present version, a Gaussian peak shape is used. The formula of a
-Gaussian function is   
-![&#10;G(x;a,x\_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma} &#10;
-\\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x\_0}{\\sigma}\\right)^2\\right)&#10;](https://latex.codecogs.com/png.latex?%0AG%28x%3Ba%2Cx_0%2C%5Csigma%29%3D%5Cfrac%7Ba%7D%7B%5Csqrt%7B2%5Cpi%7D%5Csigma%7D%20%0A%20%20%5Cexp%5Cleft%28-%5Cfrac%7B1%7D%7B2%7D%5Cleft%28%5Cfrac%7Bx-x_0%7D%7B%5Csigma%7D%5Cright%29%5E2%5Cright%29%0A
-"
-G(x;a,x_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma} 
-  \\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x_0}{\\sigma}\\right)^2\\right)
-")  
+Gaussian function is \[
+G(x;a,x\_0,\\sigma)=\\frac{a}{\\sqrt{2\\pi}\\sigma}
+\\exp\\left(-\\frac{1}{2}\\left(\\frac{x-x\_0}{\\sigma}\\right)^2\\right)\]
 where ![a](https://latex.codecogs.com/png.latex?a "a") is the area,
 ![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") is the position
 of the peak, and
-![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\\sigma") is
-related to the full width at maximum
-(![fwhm](https://latex.codecogs.com/png.latex?fwhm "fwhm")) by ![fwhm
-= 2\\sqrt{2\\log(2)}
-\\sigma](https://latex.codecogs.com/png.latex?fwhm%20%3D%202%5Csqrt%7B2%5Clog%282%29%7D%20%5Csigma
-"fwhm = 2\\sqrt{2\\log(2)} \\sigma"). Upon the fit process of the data,
-the area (![a](https://latex.codecogs.com/png.latex?a "a")) is
-optimized, as well as the peak’s position and width
+![\\\\sigma](https://latex.codecogs.com/png.latex?%5C%5Csigma "\\sigma")
+is related to the full width at maximum
+(![fwhm](https://latex.codecogs.com/png.latex?fwhm "fwhm")) by
+![fwhm = 2\\\\sqrt{2\\\\log(2)} \\\\sigma](https://latex.codecogs.com/png.latex?fwhm%20%3D%202%5C%5Csqrt%7B2%5C%5Clog%282%29%7D%20%5C%5Csigma "fwhm = 2\\sqrt{2\\log(2)} \\sigma").
+Upon the fit process of the data, the area
+(![a](https://latex.codecogs.com/png.latex?a "a")) is optimized, as well
+as the peak’s position and width
 (![x\_0](https://latex.codecogs.com/png.latex?x_0 "x_0") and
-![\\sigma](https://latex.codecogs.com/png.latex?%5Csigma "\\sigma")).
+![\\\\sigma](https://latex.codecogs.com/png.latex?%5C%5Csigma "\\sigma")).
 
 From the two dimensional data (*m/z*, *CV*), the area can be extracted
 using a 2D fit where the fit function is the product of two Gaussian
@@ -241,19 +242,18 @@ functions, one in the *m/z*, the other in the *CV* dimension.
 
 It turns out that we need three types of fit:
 
-  - 2D fit in the (*m/z*, *CV*) space
+-   2D fit in the (*m/z*, *CV*) space
 
-  - 1D fit in the (*CV*) space, assuming that the *m/z* value is near
+-   1D fit in the (*CV*) space, assuming that the *m/z* value is near
     the `m/z_ref` as given in `tgTable`
 
-  - 1D fit in the *m/z* space, assuming that the *CV* value is the
+-   1D fit in the *m/z* space, assuming that the *CV* value is the
     `CV_ref` given in the `tgTable`
 
 ### Fit algorithm
 
 We use a non-linear (weighted) least-squares algorithm to estimate the
-parameters of the model: the `nls` function of the `stats` package
-\[1\].
+parameters of the model: the `nls` function of the `stats` package [1].
 
 The parameters are constrained to intervals defined by control variables
 defined below. For the 2D fits, we implemented a ‘fallback’ strategy to
@@ -263,82 +263,89 @@ tables.
 
 ### Control variables
 
-The choice of fit type is set using the `fit_dim` variable. More
-generally, the important user configuration parameters are listed within
-the first line of the `analysis.R` script as follows:
+The choice of fit type is set using the `fit_dim` variable. The
+important user configuration parameters are listed within the first line
+of the `analysis.R` script as follows:
 
-    # User configuration params ####
-    taskTable = 'files_quantification_2019.csv'
-    tgTable   = 'targets_paper.csv'
-    
+    #----------------------------------------------------------
+    # User configuration params -------------------------------
+    #----------------------------------------------------------
+
+    ms_type   = c('esquire','fticr')[2]
+
+    taskTable = 'Test2/files_quantification_2018AA.csv'
+    tgTable   = 'Test2/targets_paper_renew.csv'
+
+    fit_dim  = 1    
+
+    filter_results = TRUE
+    area_min       = 10
+
+    userTag = paste0('fit_dim_',fit_dim)
+
     save_figures = TRUE
     plot_maps    = FALSE
-    
-    # Fit controling parameters
-    fit_dim  = 0    # in (0, 1, 2)
-    fallback = TRUE # Fallback on fit_dim=1 if 2D fit fails
-    
-    weighted_fit  = FALSE
-    const_fwhm    = ifelse(fit_dim == 0,NA,0.7)
-    
-    refine_CV0 = TRUE
-    dmz = 1.0       # Width of mz window around
-                    # exact mz for signal averaging
-    dCV = 1.2       # Width of CV window around
-                    # reference CV for peak fit
-    
-    filter_results = TRUE
-    fwhm_mz_min = 0.1
-    fwhm_mz_max = 0.5
-    fwhm_cv_min = 0.5
-    fwhm_cv_max = 1.5
-    area_min    = 10
 
-  - `taskTable`: (string) file path to the tasks table
+where:
 
-  - `tgTable`: (string) file path to the targets table
+-   `ms_type`: (string) MS type (‘esquire’ or ‘fticr’)
 
-  - `save_figures`: (logical) save the plots on disk
+-   `taskTable`: (string) file path to the tasks table
 
-  - `plot_maps`: (logical) generate 2D maps summarizing the position of
-    fitted targets for a given task
+-   `tgTable`: (string) file path to the targets table
 
-  - `fit_dim`: (integer) fit dimension and type:
-    
-      - `fit_dim = 2`: a two\_dimensional (*m/z*,*CV*) fit is performed
-    
-      - `fit_dim = 1`: a 1D fit in the *CV* dimension is performed.  
-    
-      - `fit_dim = 0`: a 1D fit, but in the *m/z* dimension at fixed
+-   `fit_dim`: (integer) fit dimension and type:
+
+    -   `fit_dim = 2`: a two\_dimensional (*m/z*,*CV*) fit is performed
+
+    -   `fit_dim = 1`: a 1D fit in the *CV* dimension is performed.
+
+    -   `fit_dim = 0`: a 1D fit, but in the *m/z* dimension at fixed
         `CV_ref` (initially named “fast”).
 
-  - `fallback`: (logical) use `fit_dim=1` in cases where `fit_dim=2`
+-   `filter_results`: (logical) filter the recovered peak widths and
+    areas. The filtering rejects fwhm values outside of
+
+    -   \[`fwhm_mz_min`,`fwhm_mz_max`\] in the *m/z* dimension
+
+    -   \[`fwhm_cv_min`,`fwhm_cv_max`\] in the *CV* dimension
+
+    and areas smaller than `area_min`. The `fwhm_xxx` parameters depend
+    on `ms_type` and they are defined in the `getPeakSpecs()` function.
+
+-   `save_figures`: (logical) save the plots on disk
+
+-   `plot_maps`: (logical) generate 2D maps summarizing the position of
+    fitted targets for a given task
+
+A set of technical parameters, affecting various aspects of the peaks
+fit are also available. However, their default values should not be
+changed without caution.
+
+    #----------------------------------------------------------
+    # Technical params (change only if you know why...) -------
+    #----------------------------------------------------------
+
+    fallback        = TRUE   
+    correct_overlap = FALSE  
+    weighted_fit    = FALSE
+    refine_CV0      = TRUE
+    debug           = FALSE  
+
+-   `fallback`: (logical) use `fit_dim=1` in cases where `fit_dim=2`
     fails (optimizer does not converge).
 
-  - `weighted_fit`: (logical) apply a Poisson-type weighting to the
+-   `correct_overlap`: (logical) provision for a correction of peaks
+    overlap (experimental).
+
+-   `weighted_fit`: (logical) apply a Poisson-type weighting to the
     fitted data
 
-  - `const_fwhm`: (numerical) value of the peak’s fwhm in the *CV*
-    dimension (`fit_dim=1,2`) of the *m/z* dimension (`fit_dim=0`). If
-    `const_fwhm=NA`, the value is optimized, otherwise, it is fixed to
-    the specified value.
-
-  - `refine_CV0`: (logical) refine the center of the search window for
+-   `refine_CV0`: (logical) refine the center of the search window for
     the *CV* position of the peak. If `FALSE`, use the value defined in
     `tgTable`.
 
-  - `dmz`, `dCV`: (numericals) width of search intervals for the peak’s
-    position. These intervals are centered on (possibly refined) values
-    of `m/z_ref` and `CV_ref` given in `tgTable`.
-
-  - `filter_results`: (logical) filter the recovered peak widths and
-    areas. The filtering rejects fwhm values outside of
-    
-      - \[`fwhm_mz_min`,`fwhm_mz_max`\] in the *m/z* dimension
-    
-      - \[`fwhm_cv_min`,`fwhm_cv_max`\] in the *CV* dimension
-    
-    and areas smaller than `area_min`.
+-   `debug`: (logical) stop the analysis after the first target.
 
 ### Outputs
 
@@ -363,7 +370,7 @@ prefix and the target name.
 
 **Example of a 2D fit** ![](article/fig1.png)
 
-  - On the left panel, the 2D map centered on the peak position. The
+-   On the left panel, the 2D map centered on the peak position. The
     data are coded in color intensity from pale yellow to red. The pale
     blue-green area is the *CV* search range for the peak position. The
     solid red lines depict the peak position defined by `m/z_ref` and
@@ -371,7 +378,7 @@ prefix and the target name.
     the estimated peak position. If the 2D fit is successful, green
     contour lines of the peak are displayed.
 
-  - On the right panel, the *CV* peak profile for data integrated over
+-   On the right panel, the *CV* peak profile for data integrated over
     *m/z* (green curve). The blue line is the best fit. The red lines
     and pale blue have the same meaning as above. The best-fit
     parameters are reported in the graph, with a warning in case of fit
@@ -379,7 +386,7 @@ prefix and the target name.
 
 **Example of a 1D fit along *m/z* (`fit_dim=0`)** ![](article/fig2.png)
 
-  - Same legend as for the 2D fit, except for the right panel, which
+-   Same legend as for the 2D fit, except for the right panel, which
     represents the *m/z* profile of the peak.
 
 #### Tables
@@ -394,34 +401,34 @@ variables for this task.
 
 **Notes**
 
-  - In output files, the missing data are represented by `NA`s.
+-   In output files, the missing data are represented by `NA`s.
 
 ##### Fit results: `XXX_results.csv`
 
-  - the first 4 columns are copies of the `tgTable` data:
-    
-    | Name | Comments | m/z\_ref | CV\_ref |
-    | ---- | -------- | -------- | ------- |
+-   the first 4 columns are copies of the `tgTable` data:
 
-  - the next 8 columns correspond to the position, width and uncertainty
+    | Name | Comments | m/z\_ref | CV\_ref |
+    |------|----------|----------|---------|
+
+-   the next 8 columns correspond to the position, width and uncertainty
     values of the optimized Gaussian in the m/z and CV dimensions
     (unavailable data are represented by `NA`)
-    
-    | m/z | u\_m/z | CV | u\_CV | FWHM\_m/z | u\_FWHM\_m/z | FWHM\_CV | u\_FWHM\_CV |
-    | --- | ------ | -- | ----- | --------- | ------------ | -------- | ----------- |
 
-  - the next 2 columns are the results for the optimized Area values,
+    | m/z | u\_m/z | CV  | u\_CV | FWHM\_m/z | u\_FWHM\_m/z | FWHM\_CV | u\_FWHM\_CV |
+    |-----|--------|-----|-------|-----------|--------------|----------|-------------|
+
+-   the next 2 columns are the results for the optimized Area values,
     and corresponding uncertainty.
-    
-    | Area | u\_Area |
-    | ---- | ------- |
 
-  - finally, you will find the `fit_dim` value, the `dilu` index, and
+    | Area | u\_Area |
+    |------|---------|
+
+-   finally, you will find the `fit_dim` value, the `dilu` index, and
     the `tag` which is a concatenation of date + MS\_filename + fit\_dim
     that can be used for further sorting of the results.
-    
+
     | fit\_dim | dilu | tag |
-    | -------- | ---- | --- |
+    |----------|------|-----|
 
 ##### Peak profiles: `XXX_fit.csv` and `XXX_XIC.csv`
 
@@ -430,18 +437,18 @@ over *m/z* for the compounds in `tgTable` (`fit_dim=1,2`) or the *m/z*
 data profile (`fit_dim=0`) for the species in `tgTable`. The
 `XXX_fit.csv` file contains the corresponding gaussian peak profiles.
 
-  - For `fit_dim=1,2`, the first two columns are the *time* and *CV*
+-   For `fit_dim=1,2`, the first two columns are the *time* and *CV*
     abscissae of the profiles
-    
-    | time | CV |
-    | ---- | -- |
+
+    | time | CV  |
+    |------|-----|
 
     For `fit_dim=0`, the first column is *m/z*
-    
-    | m/z |
-    | --- |
 
-  - the following columns are headed by the name of the compound and
+    | m/z |
+    |-----|
+
+-   the following columns are headed by the name of the compound and
     contain the corresponding profiles
 
 ## `checkRep.R`
@@ -458,35 +465,35 @@ The job is defined by a few parameters.
 
     taskTable  = 'files_quantification_2019July10.csv'
     quantTable = 'targets_paper_quantification.csv'
-    
+
     fit_dim = 2
     userTag = paste0('fit_dim_',fit_dim)
-    
+
     const_fwhm = 0.7
     area_min   = 10
-    
+
     makePlots = TRUE
 
-  - `taskTable`: (string) file path to the list of experiments to be
+-   `taskTable`: (string) file path to the list of experiments to be
     compared
 
-  - `quantTable`: (string) list of the compounds for which the
+-   `quantTable`: (string) list of the compounds for which the
     comparisons should be done
 
-  - `fit_dim`: (integer) type of peak fit for which the comparisons
+-   `fit_dim`: (integer) type of peak fit for which the comparisons
     should be done
 
-  - `userTag`: (string) tag to differentiate the outputs. In the present
+-   `userTag`: (string) tag to differentiate the outputs. In the present
     case, one wants to compare the repeatability for different peak fit
     approaches.
 
-  - `const_fwhm`: (numerical) estimate of the peak width in the *CV*
+-   `const_fwhm`: (numerical) estimate of the peak width in the *CV*
     direction to define the plot axes.
 
-  - `area_min` (numerical) should have the same value than used in
+-   `area_min` (numerical) should have the same value than used in
     `analysis.R` (only used for reporting in plots)
 
-  - `makePlots`: (logical) generate the plots, or not…
+-   `makePlots`: (logical) generate the plots, or not…
 
 ### Outputs
 
@@ -500,21 +507,21 @@ saved to disk.
 
 **Checkrep plot for a repeatability analysis** ![](article/fig3.png)
 
-  - The plot reports the fit data (CV, FWHM and Area) for the species
+-   The plot reports the fit data (CV, FWHM and Area) for the species
     (top row) and its tracer (bottom row). The last column displays the
     calculated area ratios (top) and the correlation plot of the areas
     for both species (bottom).
-    
-      - For FWHM, the green area depicts the limits imposed in the fit.
-    
-      - For Area and Ratio, the weighted mean and the limits of a
+
+    -   For FWHM, the green area depicts the limits imposed in the fit.
+
+    -   For Area and Ratio, the weighted mean and the limits of a
         two-sigma uncertainty interval are represented as red horizontal
         lines, full and dashed respectively.
-    
-      - For the Areas correlation plot, the unit line is represented in
+
+    -   For the Areas correlation plot, the unit line is represented in
         green.
 
-  - For each point, two-sigma error bars are printed in blue.
+-   For each point, two-sigma error bars are printed in blue.
 
 **Mean values and uncertainties for a repeatability analysis**
 ![](article/fig4.png)
@@ -522,20 +529,20 @@ saved to disk.
 #### Tables
 
 The name of the file is a concatenation of the date, time, `userTag`,
-and ’\_compilation.csv’. It contains all the collected results, with the
+and ‘\_compilation.csv’. It contains all the collected results, with the
 following additions:
 
-  - two columns containing the ratio of areas for pairs of compounds
+-   two columns containing the ratio of areas for pairs of compounds
     defined in `quantTable`, and its uncertainty
-    
-    | ratio | u\_ratio |
-    | ----- | -------- |
 
-  - a set of lines with tag “Mean”, containing for each target compound
+    | ratio | u\_ratio |
+    |-------|----------|
+
+-   a set of lines with tag “Mean”, containing for each target compound
     the mean of the properties over the set of experiments. Weighted
     means are used, with weights estimated by the Cochran’s ANOVA method
-    \[2\].
-    
+    [2].
+
     The observed variance is decomposed in two terms: the variance due
     to the parametric uncertainty on the property (estimated in
     `analysis.R`), and an unknown variance term due to experimental
@@ -543,7 +550,7 @@ following additions:
     observed variance minus the mean of the parametric variances, with a
     positivity constraint. The variance for a datum is then the sum of
     its parametric variance and the repeatability variance. The weights
-    are the normalized reciprocal variances \[3\].
+    are the normalized reciprocal variances [3].
 
 ## `quantify.R`
 
@@ -557,20 +564,20 @@ The job is defined by a few parameters.
 
     taskTable  = 'files_quantification_2019July10.csv'
     quantTable = 'targets_paper_quantification.csv'
-    
+
     fit_dim = 2
     userTag = paste0('fit_dim_',fit_dim)
 
-  - `taskTable`: (string) file path to the list of experiments to be
+-   `taskTable`: (string) file path to the list of experiments to be
     compared
 
-  - `quantTable`: (string) list of the compounds for which the
+-   `quantTable`: (string) list of the compounds for which the
     comparisons should be done
 
-  - `fit_dim`: (integer) type of peak fit for which the comparisons
+-   `fit_dim`: (integer) type of peak fit for which the comparisons
     should be done
 
-  - `userTag`: (string) tag to differentiate the outputs. In the present
+-   `userTag`: (string) tag to differentiate the outputs. In the present
     case, one wants to compare the repeatability for different peak fit
     approaches.
 
@@ -582,40 +589,40 @@ A PDF file is generated, containing the quantification plots for all
 compounds.
 
 The name of the file is a concatenation of the date, time, `userTag`,
-and ’\_quantif.pdf’
+and ‘\_quantif.pdf’
 
 #### Tables
 
 A ‘.csv’ table containing the quantification results.
 
 The name of the file is a concatenation of the date, time, `userTag`,
-and ’\_quantif.csv’
+and ‘\_quantif.csv’
 
 ##### Structure
 
 | Name | Int | Slo | Slo0 | LOD |
-| ---- | --- | --- | ---- | --- |
+|------|-----|-----|------|-----|
 
 where
 
-  - `Name` is the name of the compound
+-   `Name` is the name of the compound
 
-  - `Int` is the value of the intercept
+-   `Int` is the value of the intercept
 
-  - `Slo` is the value of the slope
+-   `Slo` is the value of the slope
 
-  - `Slo0` is the value of the slope with null intercept
+-   `Slo0` is the value of the slope with null intercept
 
-  - `LOD` is the estimated limit of detection
+-   `LOD` is the estimated limit of detection
 
 # References
 
-1.  R Core Team (2020). R: A language and environment for statistical
-    computing. R Foundation for Statistical Computing, Vienna, Austria.
-    [URL](https://www.R-project.org)
+[1] R Core Team (2020). R: A language and environment for statistical
+computing. R Foundation for Statistical Computing, Vienna, Austria.
+[URL](https://www.R-project.org)
 
-2.  C. Rivier *et al.* (2014) *Accredit. Qual. Assur.* **19**:269–274
-    [doi](doi:https://doi.org/10.1007/s00769-014-1066-3)
+[2] C. Rivier *et al.* (2014) *Accredit. Qual. Assur.* **19**:269–274
+[doi](doi:https://doi.org/10.1007/s00769-014-1066-3)
 
-3.  Inverse variance weighting in
-    [Wikipedia](https://en.wikipedia.org/wiki/Inverse-variance_weighting)
+[3] Inverse variance weighting in
+[Wikipedia](https://en.wikipedia.org/wiki/Inverse-variance_weighting)
