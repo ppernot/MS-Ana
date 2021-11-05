@@ -1,0 +1,46 @@
+R version 3.6.1 (2019-07-05)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Debian GNU/Linux 9 (stretch)
+
+Matrix products: default
+BLAS:   /usr/lib/openblas-base/libblas.so.3
+LAPACK: /usr/lib/libopenblasp-r0.2.19.so
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets 
+[6] methods   base     
+
+other attached packages:
+[1] assertive_0.3-5 repmis_0.5      rlist_0.4.6.1  
+[4] inlmisc_0.4.9   mixtools_1.2.0  xtable_1.8-4   
+
+loaded via a namespace (and not attached):
+ [1] xfun_0.12                  kernlab_0.9-29            
+ [3] splines_3.6.1              lattice_0.20-38           
+ [5] colorspace_1.4-1           assertive.matrices_0.0-2  
+ [7] htmltools_0.4.0            yaml_2.2.1                
+ [9] survival_3.1-8             assertive.datetimes_0.0-2 
+[11] rlang_0.4.4                R.oo_1.23.0               
+[13] R.utils_2.9.2              sp_1.4-0                  
+[15] segmented_1.1-0            assertive.code_0.0-3      
+[17] lifecycle_0.1.0            R.cache_0.14.0            
+[19] plyr_1.8.5                 assertive.data.uk_0.0-2   
+[21] munsell_0.5.0              raster_3.0-12             
+[23] R.methodsS3_1.8.0          codetools_0.2-16          
+[25] evaluate_0.14              knitr_1.28                
+[27] assertive.data_0.0-3       assertive.data.us_0.0-2   
+[29] assertive.base_0.0-7       assertive.files_0.0-2     
+[31] Rcpp_1.0.3                 backports_1.1.5           
+[33] scales_1.1.0               checkmate_2.0.0           
+[35] farver_2.0.3               assertive.reflection_0.0-4
+[37] assertive.types_0.0-3      assertive.properties_0.0-4
+[39] packrat_0.5.0              digest_0.6.25             
+[41] stringi_1.4.6              grid_3.6.1                
+[43] rgdal_1.4-8                tools_3.6.1               
+[45] magrittr_1.5               assertive.strings_0.0-3   
+[47] assertive.numbers_0.0-2    pkgconfig_2.0.3           
+[49] MASS_7.3-51.5              Matrix_1.2-17             
+[51] data.table_1.12.8          assertive.models_0.0-2    
+[53] rmarkdown_2.1              httr_1.4.1                
+[55] R6_2.4.1                   assertive.sets_0.0-3      
+[57] igraph_1.2.4.2             compiler_3.6.1            

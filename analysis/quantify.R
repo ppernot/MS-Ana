@@ -133,7 +133,7 @@ for(it in 1:length(targets)) {
 
   # LInear regression with intercept at 0
   reg0 = lm(yo~0+xo, weights = 1/(dratio[io]/2)^2)
-  p0 = predict(reg0, ,
+  p0 = predict(reg0,
                newdata = list(xo = x1),
                interval = 'conf')
   matlines(x1[!is.na(p0[,1])],p0,

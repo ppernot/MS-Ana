@@ -1,0 +1,45 @@
+R version 3.6.3 (2020-02-29)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 18.04.6 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.7.1
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.7.1
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods  
+[7] base     
+
+other attached packages:
+[1] data.table_1.14.2 assertive_0.3-6   repmis_0.5       
+[4] rlist_0.4.6.2     inlmisc_0.5.2     mixtools_1.2.0   
+[7] xtable_1.8-4     
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.7                 assertive.data_0.0-3      
+ [3] plyr_1.8.6                 compiler_3.6.3            
+ [5] R.methodsS3_1.8.1          R.utils_2.11.0            
+ [7] assertive.files_0.0-2      assertive.properties_0.0-4
+ [9] tools_3.6.3                assertive.data.us_0.0-2   
+[11] digest_0.6.28              lifecycle_1.0.1           
+[13] checkmate_2.0.0            assertive.base_0.0-9      
+[15] lattice_0.20-45            R.cache_0.15.0            
+[17] rlang_0.4.12               pkgconfig_2.0.3           
+[19] Matrix_1.3-4               igraph_1.2.7              
+[21] rgdal_1.5-27               xfun_0.27                 
+[23] terra_1.4-11               httr_1.4.2                
+[25] knitr_1.36                 raster_3.5-2              
+[27] assertive.strings_0.0-3    assertive.sets_0.0-3      
+[29] assertive.types_0.0-3      assertive.datetimes_0.0-3 
+[31] assertive.matrices_0.0-2   segmented_1.3-4           
+[33] grid_3.6.3                 assertive.code_0.0-3      
+[35] R6_2.5.1                   survival_3.2-13           
+[37] sp_1.4-5                   farver_2.1.0              
+[39] kernlab_0.9-29             magrittr_2.0.1            
+[41] scales_1.1.1               backports_1.3.0           
+[43] assertive.numbers_0.0-2    codetools_0.2-18          
+[45] assertive.models_0.0-2     MASS_7.3-54               
+[47] splines_3.6.3              colorspace_2.0-2          
+[49] stringi_1.7.5              assertive.data.uk_0.0-2   
+[51] munsell_0.5.0              assertive.reflection_0.0-5
+[53] R.oo_1.24.0               

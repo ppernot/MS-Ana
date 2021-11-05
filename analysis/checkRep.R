@@ -58,7 +58,7 @@ targets = quant$Name
 
 # Manage graph labels according to fit_dim
 ylab = ifelse(fit_dim==0,'m/z','CV')
-rlab = ifelse(fit_dim==0,'m/z_ref','CV_ref')
+rlab = ifelse(fit_dim==0,'...m/z_ref','CV_ref')
 
 for(it in 1:length(targets)) {
   AA = targets[it]
