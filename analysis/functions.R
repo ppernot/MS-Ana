@@ -9,7 +9,7 @@ options(
 ## CRAN packages
 libs <- c('xtable','mixtools','inlmisc',
           'rlist','repmis','assertive',
-          'data.table')
+          'data.table','chemCal')
 for (lib in libs) {
   if (!require(lib, character.only = TRUE, quietly = TRUE)) {
     install.packages(

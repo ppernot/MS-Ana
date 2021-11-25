@@ -59,7 +59,7 @@ D     = gatherResults(Tasks, tabRepo, userTag)
 D = cbind(
   D,
   ratio = NA, CV_ratio = NA, u_ratio = NA,
-  LOD = NA, CV_LOD = NA, u_LOD = NA,
+  LOD = NA, CV_LOD = NA, u_LOD = NA, LOD1 = NA,
   LOQ = NA, CV_LOQ = NA, u_LOQ = NA,
   slope0 = NA, CV_slope0 = NA, u_slope0 = NA,
   slope = NA, CV_slope = NA, u_slope = NA,
@@ -129,9 +129,12 @@ for(it in 1:length(targets)) {
   xo   = cAA[io]
   yo   = ratio[io]
   uyo  = dratio[io]
-  wo   = 1/uyo^2
-  reg  = lm(yo ~ xo, weights = wo)
-  reg0 = lm(yo ~ 0 + xo, weights = wo)
+  # wo   = 1/uyo^2
+  # reg  = lm(yo ~ xo, weights = wo)
+  # reg0 = lm(yo ~ 0 + xo, weights = wo)
+  # Ignore weights
+  reg  = lm(yo ~ xo)
+  reg0 = lm(yo ~ 0 + xo)
 
   slope0 = coefficients(reg0)[1]
   uSlope0 = sqrt(diag(vcov(reg0)))
@@ -156,13 +159,16 @@ for(it in 1:length(targets)) {
   D[selAA,'u_intercept']  = f[,'uy']
   D[selAA,'CV_intercept'] = signif(100 * abs(uCoefs[1] / intercept),2)
 
-  Sxy = sqrt(sum(residuals(reg)^2)/length(xo-2))
+  Sxy  = summary(reg)$sigma #Standard deviation of residuals
   lod  = 3 * Sxy / slope
   uLod = 3 * Sxy / slope^2 * uSlope
   f = formatUncVec(lod,uLod)
   D[selAA, 'LOD']    = f[,'y']
   D[selAA, 'u_LOD']  = f[,'uy']
   D[selAA, 'CV_LOD'] = D[selAA, 'CV_slope']
+
+  # LOD estimated by chemCal with IUPAC method (no uncertainty)
+  D[selAA, 'LOD1']   = signif(chemCal::lod(reg)$x,5)
 
   loq  = 10 * Sxy / slope
   uLoq = 10 * Sxy / slope^2 * uSlope
@@ -171,7 +177,7 @@ for(it in 1:length(targets)) {
   D[selAA, 'u_LOQ']  = f[,'uy']
   D[selAA, 'CV_LOQ'] = D[selAA, 'CV_slope']
 
-  D[selAA, 'R2']  = signif(summary(reg)$r.squared,2)
+  D[selAA, 'R2' ] = signif(summary(reg)$r.squared,2)
   D[selAA, 'R20'] = signif(summary(reg0)$r.squared,2)
 
   if(makePlots) {
@@ -192,14 +198,14 @@ for(it in 1:length(targets)) {
     x1 = c(0,xo)
     p = predict(reg,
                 newdata = list(xo = x1),
-                interval = 'conf')
+                interval = 'pred')
     matlines(x1[!is.na(p[,1])],p,
              col = cols[4],
              lty=c(1,2,2))
 
     p0 = predict(reg0,
                  newdata = list(xo = x1),
-                 interval = 'conf')
+                 interval = 'pred')
     matlines(x1[!is.na(p0[,1])],p0,
              col = cols[2],
              lty=c(1,2,2))
@@ -207,6 +213,11 @@ for(it in 1:length(targets)) {
     Clod = D[selAA, 'LOD']
     abline(v=Clod , col=cols[3], lty = 2)
     mtext('LOD',side=3,col=cols[3],at=Clod, cex=0.75)
+
+    # LOD1
+    Clod = D[selAA, 'LOD1']
+    abline(v=Clod , col=cols[6], lty = 2)
+    mtext('LOD1',side=3,col=cols[6],at=Clod, cex=0.75)
 
     box()
   }
@@ -217,15 +228,11 @@ if(makePlots)
 # Estimate means ####
 
 props = c("m/z","CV","FWHM_m/z","FWHM_CV","Area",
-          "ratio","slope0","slope","intercept","LOD","LOQ")
-# signum = c(6   ,3   ,3         ,3        ,3     ,5,
-#            5, 5, 5, 5, 5)
+          "ratio","slope0","slope","intercept","LOD","LOD1","LOQ")
 if(fit_dim == 0) {
   sel = c(1,3,5:11)
   props = props[sel]
-  # signum = signum[sel]
 }
-# names(signum) = props
 
 meanResTab = D[1:length(targets),]
 meanResTab[,] = NA
@@ -250,7 +257,7 @@ for(targ in targets) {
     f = formatUncVec(wm,uwm)
     meanResTab[targ,prop]              = f[,'y']
     meanResTab[targ,paste0('u_',prop)] = f[,'uy']
-    if(! prop %in% props[1:5])
+    if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
       meanResTab[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm),2)
   }
 }
@@ -260,8 +267,6 @@ meanResTab[,'tag']     = 'Mean'
 # Means for IS species
 targIS = quant$IS
 propsIS = props[-length(props)]
-# signumIS = signum[-length(signum)]
-# names(signumIS) = propsIS
 
 meanResTabIS = D[1:length(targIS),]
 meanResTabIS[,] = NA
@@ -286,7 +291,7 @@ for(targ in targIS) {
     f = formatUncVec(wm,uwm)
     meanResTab[targ,prop]              = f[,'y']
     meanResTab[targ,paste0('u_',prop)] = f[,'uy']
-    if(! prop %in% props[1:5])
+    if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
       meanResTabIS[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm), 2)
   }
 }
