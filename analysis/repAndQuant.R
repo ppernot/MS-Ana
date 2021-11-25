@@ -26,9 +26,11 @@ source('functions.R')
 # User configuration params ####
 # taskTable = 'list_of_files_AA_2.csv'
 # quantTable = 'listaacom_quantification.csv'
+dataRepo  = "../data/TestQuant/"
+tabRepo   = dataRepo
 
-taskTable = 'files_quantification_2019July10.csv'
-quantTable = 'targets_paper_quantification.csv'
+taskTable  = 'Files_OA_Gamme4_20210428.csv'
+quantTable = 'targets_OA1_quantification.csv'
 
 fit_dim = 2
 userTag = paste0('fit_dim_',fit_dim)
@@ -190,7 +192,7 @@ for(it in 1:length(targets)) {
       ylab = 'aire_AA / aire_IS', ylim = c(0,max(ratio)),
       main = paste(AA,'/',IS)
     )
-    grid()
+    grid(col='gray80'); abline(v=0)
     segments(xo, yo - 2 * uyo,
              xo, yo + 2 * uyo,
              col = cols[5])
@@ -198,25 +200,27 @@ for(it in 1:length(targets)) {
     x1 = c(0,xo)
     p = predict(reg,
                 newdata = list(xo = x1),
-                interval = 'pred')
+                interval = 'pred',
+                level = 0.99)
     matlines(x1[!is.na(p[,1])],p,
              col = cols[4],
              lty=c(1,2,2))
 
-    p0 = predict(reg0,
-                 newdata = list(xo = x1),
-                 interval = 'pred')
-    matlines(x1[!is.na(p0[,1])],p0,
-             col = cols[2],
-             lty=c(1,2,2))
+    # p0 = predict(reg0,
+    #              newdata = list(xo = x1),
+    #              interval = 'pred', level = 0.99)
+    # matlines(x1[!is.na(p0[,1])],p0,
+    #          col = cols[2],
+    #          lty=c(1,2,2))
     # LOD
+    abline(h=p[1,3], lty = 3, col = cols[3])
     Clod = D[selAA, 'LOD']
-    abline(v=Clod , col=cols[3], lty = 2)
+    abline(v=Clod , col=cols[3], lty = 3)
     mtext('LOD',side=3,col=cols[3],at=Clod, cex=0.75)
 
     # LOD1
     Clod = D[selAA, 'LOD1']
-    abline(v=Clod , col=cols[6], lty = 2)
+    abline(v=Clod , col=cols[6], lty = 3)
     mtext('LOD1',side=3,col=cols[6],at=Clod, cex=0.75)
 
     box()
