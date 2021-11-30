@@ -127,11 +127,13 @@ for(it in 1:length(targets)) {
   D[selAA,'CV_ratio'] = signif(100 * abs(dratio/ratio),2)
 
   # Linear regressions
+
   io   = order(cAA)
   xo   = cAA[io]
   yo   = ratio[io]
   uyo  = dratio[io]
   # wo   = 1/uyo^2
+  # wo = wo / sum(wo)
   # reg  = lm(yo ~ xo, weights = wo)
   # reg0 = lm(yo ~ 0 + xo, weights = wo)
   # Ignore weights
@@ -196,13 +198,12 @@ for(it in 1:length(targets)) {
     segments(xo, yo - 2 * uyo,
              xo, yo + 2 * uyo,
              col = cols[5])
+
     # Fits
-    x1 = c(0,xo)
     p = predict(reg,
-                newdata = list(xo = x1),
                 interval = 'pred',
                 level = 0.99)
-    matlines(x1[!is.na(p[,1])],p,
+    matlines(xo, p,
              col = cols[4],
              lty=c(1,2,2))
 
@@ -212,16 +213,22 @@ for(it in 1:length(targets)) {
     # matlines(x1[!is.na(p0[,1])],p0,
     #          col = cols[2],
     #          lty=c(1,2,2))
+
     # LOD
-    abline(h=p[1,3], lty = 3, col = cols[3])
     Clod = D[selAA, 'LOD']
     abline(v=Clod , col=cols[3], lty = 3)
     mtext('LOD',side=3,col=cols[3],at=Clod, cex=0.75)
+    mtext(Clod, side=1,col=cols[3],at=Clod, cex=0.75)
+
+    #Check with 99% CI
+    abline(h=p[1,3], lty = 3, col = cols[3])
 
     # LOD1
     Clod = D[selAA, 'LOD1']
-    abline(v=Clod , col=cols[6], lty = 3)
-    mtext('LOD1',side=3,col=cols[6],at=Clod, cex=0.75)
+    if(all(!is.na(Clod))) {
+      abline(v=Clod , col=cols[6], lty = 3)
+      mtext('LOD1',side=3,col=cols[6],at=Clod, cex=0.75)
+    }
 
     box()
   }
