@@ -1,0 +1,510 @@
+---
+title: "LOD"
+author: "Pascal PERNOT"
+date: "02/12/2021"
+output:
+  html_document: 
+    fig_height: 7
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(chemCal)
+```
+
+# Intro
+
+The method used in RepAndQuant.R to estimate the LOD 
+does not take the data structure (daily series) into
+account. This is why it provides a larger LOD than
+your excel method. We should give up on this 'global'
+approach and take series into account.
+
+However, I think your method is overly optimistic,
+and I explore nex several improvements.
+
+
+# Get data and perform daily linear regressions
+
+```{r get_data, echo=FALSE}
+file = 'data_6J_MMA.csv'
+# file = 'data_6J_Glut.csv'
+# file = 'data_6J_Adip.csv'
+
+D = read.csv(file, sep = ';', header = FALSE)
+x = D[, 1]
+Y = D[, 2:ncol(D)]
+Ns = ncol(Y)
+N  = nrow(Y)
+```
+
+Data file: `r file`
+
+```{r lin_reg, echo=FALSE}
+regl = list()
+tabc = matrix(NA, ncol = 2, nrow = Ns)
+rownames(tabc) = paste0('J',1:Ns)
+colnames(tabc) = c('Intercept', 'slope')
+tabu = tabc
+colnames(tabu) = c('u_Intercept', 'u_slope')
+for (i in 1:Ns) {
+  y = Y[, i]
+  regl[[i]]  = lm(y ~ x)
+  tabc[i, ]  = summary(regl[[i]])$coefficients[, 1]
+  tabu[i, ]  = summary(regl[[i]])$coefficients[, 2]
+}
+c.mean = apply(tabc, 2, mean)
+c.sd   = apply(tabc, 2, sd)
+```
+
+```{r res_lin_reg, echo=FALSE}
+print(
+  knitr::kable(
+    rbind(
+      cbind(tabc,tabu),
+      Mean=c(c.mean,NA,NA),
+      SD = c(c.sd, NA,NA)
+    ),
+    digits = 5
+  )
+)
+```
+
+
+# The Excel way
+
+This is the reference value issued by your excel method:
+
+LOD = 3 * SD(Intercept) / Mean(Slope)
+
+```{r LOD_excel, echo=TRUE}
+LOD_excel = 3 * c.sd[1] / c.mean[2]
+names(LOD_excel) = 'LOD_excel'
+print(LOD_excel)
+```
+
+Problems I see here:
+
+1. the factor 3 should be _at least_ $2*1.644 = 3.3$ 
+   (in the hypothesis of a large number of points per series;
+   cf. Ellison2020)
+
+2. the intercepts (and slopes) are uncertain, and one might want to 
+   use this info to better estimate the SD of the intercept
+   $$u_{Intercept}^{tot} = \sqrt{SD(Intercept)^2 + Mean(u_{Intercept}^2)}$$
+
+This provides a corrected LOD:
+
+```{r LOD_corr, echo=TRUE}
+u.tot = sqrt(c.sd^2 + colMeans(tabu^2))
+names(u.tot) = 'u.tot'
+print(signif(u.tot[1],3))
+LOD_corr = 2 * qnorm(0.95) * u.tot[1] / c.mean[2]
+names(LOD_corr) = 'LOD_corr'
+print(LOD_corr)
+```
+
+A notable enlargment...
+
+# Averaging daily LODs
+
+Another (better ?) option is to compute the LOD for each series
+and average them, which provides also an uncertainty on the LOD.
+Here the LOD is computed by the corrected formula and by chemcal
+for comparison.
+
+Knowing the uncertainty on each LOD, one might also use this to 
+perform a weighted mean...
+
+```{r LOD_avrg, echo = FALSE}
+tabl = tablu = tablc = c()
+for (i in 1:Ns) {
+  Sxy        = summary(regl[[i]])$sigma
+  slope      = tabc[i,2]
+  uSlope     = tabu[i,2]
+  tabl[i]    = 2 * qnorm(0.95) * Sxy / slope
+  tablu[i]   = 2 * qnorm(0.95) * Sxy / slope^2 * uSlope
+  tablc[i]   = LOD_chemcal = chemCal::lod(regl[[i]],method = 'din')$x
+}
+names(tabl) = names(tablu) = names(tablc) = paste0('J',1:Ns)
+LOD_mean   = mean(tabl)
+u.LOD_mean = sd(tabl) / sqrt(length(tabl))
+
+LOD_chemCal_mean = mean(tablc)
+
+tabw    = 1 / tablu^2
+tabw    = tabw / sum(tabw)
+LOD_wmean   = sum(tabl*tabw)
+u.LOD_wmean = sqrt(sum(tabw*(tabl^2+tablu^2))-LOD_wmean^2)
+
+```
+
+
+```{r res_LOD_avrg, echo=FALSE}
+print(
+  knitr::kable(
+    rbind(
+      cbind(LOD = tabl,tablu,LOD_chemCal=tablc),
+      Mean = c(LOD_mean,NA,LOD_chemCal_mean),
+      SE   = c(u.LOD_mean,NA,NA),
+      wMean = c(LOD_wmean,NA,NA),
+      wSE   = c(u.LOD_wmean,NA,NA)
+    ),
+    digits = 5
+  )
+)
+```
+
+_Note_: As the larger LODs have also the larger uncertainties, 
+the weighted mean concentrates to the smaller values.
+
+```{r summary_plot, echo = FALSE}
+matplot(
+  x,
+  Y,
+  type = 'p',
+  pch = 16,
+  col = 4,
+  xlim = c(0, 10), xlab = 'cAA',
+  ylim = c(0, 0.75*mean(unlist(Y))), ylab = 'ratio',
+  # xaxs = 'i',
+  yaxs = 'i',
+  main = file
+)
+grid()
+for (i in 1:Ns)
+  abline(regl[[i]], lty = 1, col = 'gray50')
+abline(v = 0, h = 0)
+
+abline(v = LOD_excel,
+       col = 1,
+       lwd = 4,
+       lty = 3)
+
+abline(v = tabl,
+       col = 2,
+       lwd = 2,
+       lty = 3)
+abline(v = LOD_mean,
+       col = 2,
+       lwd = 4,
+       lty = 2)
+segments(tabl-2*tablu,0.15,
+         tabl+2*tablu,0.15,
+         col = 2,lwd=4)
+segments(LOD_mean-2*u.LOD_mean,0,
+         LOD_mean+2*u.LOD_mean,0,
+         col = 2,lwd=16)
+
+abline(v = LOD_wmean,
+       col = 3,
+       lwd = 4,
+       lty = 2)
+segments(LOD_wmean-2*u.LOD_wmean,0,
+         LOD_wmean+2*u.LOD_wmean,0,
+         col = 3,lwd=8)
+
+legend(
+  'bottomright',
+  bty = 'n',
+  title = 'LOD',
+  legend = c(
+    paste0(signif(LOD_excel, 4),   ' (LOD_excel)'),
+    paste0(signif(LOD_mean, 4),    ' (LOD_mean)'),
+    paste0(signif(LOD_wmean, 4),   ' (LOD_wmean)')
+  ),
+  col = 1:5,
+  lty = 3,
+  lwd = 4,
+  pch = NA
+)
+
+```
+
+__Problem__: chemCal provides much larger values, which is probably
+due to our use of the factor 3.3 assuming an infinite
+number of regression points. Considering the number of 
+points in a series $N=$ `r N`, this should be replaced by the
+95th quantile of the Student's-t distribution with $N-1$
+degrees of freedom: `r 2*qt(0.95,df=N-1)`.
+
+
+```{r LOD_avrg1, echo = FALSE}
+
+tabl = tablu = tablc = c()
+for (i in 1:Ns) {
+  Sxy        = summary(regl[[i]])$sigma
+  slope      = tabc[i,2]
+  uSlope     = tabu[i,2]
+  tabl[i]    = 2 * qt(0.95, df = N-1) * Sxy / slope
+  tablu[i]   = 2 * qt(0.95, df = N-1) * Sxy / slope^2 * uSlope
+  tablc[i]   = LOD_chemcal = chemCal::lod(regl[[i]],method = 'din')$x
+}
+names(tabl) = names(tablu) = names(tablc) = paste0('J',1:Ns)
+LOD_mean   = mean(tabl)
+u.LOD_mean = sd(tabl) / sqrt(length(tabl))
+
+LOD_chemCal_mean = mean(tablc)
+
+tabw    = 1 / tablu^2
+tabw    = tabw / sum(tabw)
+LOD_wmean   = sum(tabl*tabw)
+u.LOD_wmean = sqrt(sum(tabw*(tabl^2+tablu^2))-LOD_wmean^2)
+
+```
+
+
+```{r res_LOD_avrg1, echo=FALSE}
+print(
+  knitr::kable(
+    rbind(
+      cbind(LOD = tabl,tablu,LOD_chemCal=tablc),
+      Mean = c(LOD_mean,NA,LOD_chemCal_mean),
+      SE   = c(u.LOD_mean,NA,NA),
+      wMean = c(LOD_wmean,NA,NA),
+      wSE   = c(u.LOD_wmean,NA,NA)
+    ),
+    digits = 5
+  )
+)
+```
+
+This gets us closer, but the LOD is still too small...
+
+## The 'din' method
+
+Let us now try to simulate the 'din' method of chemCal (cf. Appendix):
+
+1. estimate the 90% prediction interval at 0
+
+2. take Sxy as the upper limit minus the predicted value
+
+3. then LOD = 2 * Sxy / slope  
+
+```{r LOD_avrg2, echo = FALSE, warning=FALSE}
+tabl = tablu = tablc = tablq = c()
+for (i in 1:Ns) {
+  p = predict(
+    regl[[i]],
+    interval = 'prediction',
+    level = 0.90)
+  Sxy = p[1,3] - p[1,1]
+  slope      = tabc[i,2]
+  uSlope     = tabu[i,2]
+  tabl[i]    = 2 * Sxy / slope
+  tablu[i]   = 2 * Sxy / slope^2 * uSlope
+  tablq[i]   = 3.04 * Sxy / slope
+  tablc[i]   = LOD_chemcal = chemCal::lod(regl[[i]],method ='din')$x
+}
+names(tabl) = names(tablu) = names(tablc) = names(tablq) = paste0('J',1:Ns)
+LOD_mean   = mean(tabl)
+u.LOD_mean = sd(tabl) / sqrt(length(tabl))
+
+LOD_chemCal_mean = mean(tablc)
+
+tabw    = 1 / tablu^2
+tabw    = tabw / sum(tabw)
+LOD_wmean   = sum(tabl*tabw)
+u.LOD_wmean = sqrt(sum(tabw*(tabl^2+tablu^2))-LOD_wmean^2)
+
+```
+
+
+```{r res_LOD_avrg2, echo=FALSE}
+print(
+  knitr::kable(
+    rbind(
+      cbind(LOD = tabl,tablu,LOD_chemCal=tablc,LOQ = tablq),
+      Mean = c(LOD_mean,NA,LOD_chemCal_mean,NA),
+      SE   = c(u.LOD_mean,NA,NA,NA),
+      wMean = c(LOD_wmean,NA,NA,NA),
+      wSE   = c(u.LOD_wmean,NA,NA,NA)
+    ),
+    digits = 5
+  )
+)
+```
+
+__YES !!!__ We nailed it... 
+
+And as a bonus, we get uncertainties for the weighted mean.
+
+The bad news is that LOD_wmean is now much larger than LOD_excel :-(
+
+## Remark on LOQ
+
+According to chemCal, LOQ = 3.04 * LC where LC is Sxy/slope 
+
+
+# Summary
+
+```{r summary_plot2, echo = FALSE}
+matplot(
+  x,
+  Y,
+  type = 'p',
+  pch = 16,
+  col = 4,
+  xlim = c(0, 10), xlab = 'cAA',
+  ylim = c(0, 0.75*mean(unlist(Y))), ylab = 'ratio',
+  # xaxs = 'i',
+  yaxs = 'i',
+  main = file
+)
+grid()
+for (i in 1:Ns)
+  abline(regl[[i]], lty = 1, col = 'gray50')
+abline(v = 0, h = 0)
+
+abline(v = LOD_excel,
+       col = 1,
+       lwd = 4,
+       lty = 3)
+
+abline(v = tabl,
+       col = 2,
+       lwd = 2,
+       lty = 3)
+abline(v = LOD_mean,
+       col = 2,
+       lwd = 4,
+       lty = 2)
+segments(tabl-2*tablu,0.15,
+         tabl+2*tablu,0.15,
+         col = 2,lwd=4)
+segments(LOD_mean-2*u.LOD_mean,0,
+         LOD_mean+2*u.LOD_mean,0,
+         col = 2,lwd=16)
+
+abline(v = LOD_wmean,
+       col = 3,
+       lwd = 4,
+       lty = 2)
+segments(LOD_wmean-2*u.LOD_wmean,0,
+         LOD_wmean+2*u.LOD_wmean,0,
+         col = 3,lwd=8)
+
+legend(
+  'bottomright',
+  bty = 'n',
+  title = 'LOD',
+  legend = c(
+    paste0(signif(LOD_excel, 4),   ' (LOD_excel)'),
+    paste0(signif(LOD_mean, 4),    ' (LOD_mean)'),
+    paste0(signif(LOD_wmean, 4),   ' (LOD_wmean)')#,
+    # paste0(signif(LOD_chemCal_mean, 4), ' (LOD_Chemcal)') #,
+    # paste0(signif(LOD_RAQ, 4),     ' (RepAndQuant)')
+  ),
+  col = 1:5,
+  lty = 3,
+  lwd = 4,
+  pch = NA
+)
+
+```
+
+# Appendix: principle of the din method
+
+According to Ellison2020 (Fig.1) and chemCal notice...
+
+* _Lc_ :  value over which an observed analytical result significantly differs from the result for a true ‘blank’ test material
+
+* _Ld_ : smallest value of the signal which is reliably above Lc
+
+```{r din_plot, echo = FALSE, warning=FALSE}
+series = 6
+matplot(
+  x,
+  Y[,series],
+  type = 'p',
+  pch = 19,
+  col = 4,
+  xlim = c(0, 10), xlab = 'cAA',
+  ylim = c(0, 0.75*mean(unlist(Y))), ylab = 'ratio',
+  # xaxs = 'i',
+  yaxs = 'i',
+  main = paste0(file,' / J',series)
+)
+grid()
+
+# Regression line and 90% pred. int.
+abline(v = 0, h = 0)
+p = predict(
+  regl[[series]],
+  interval = 'pred',
+  level = 0.90
+)
+matlines(
+  x,
+  p,
+  col = 'gray50',
+  lwd = 2,
+  lty = c(1, 2, 2))
+text(x[2],p[2,3],' 90% predict. int.',col = 'gray50', adj = 1)
+text(x[2],p[2,1],' fit',col = 'gray50', adj = 0)
+
+# Lc and Sxy
+Lc  = p[1,3]
+Sxy = p[1,3]-p[1,1]
+segments(0, p[1, 1], 0,Lc, col = 4, lwd = 4)
+mtext('Lc', side = 2, at = Lc, col = 4)
+text(0.3, 0.75 * Lc, labels = 'Sxy', col = 4)
+abline(h = Lc, col = 4, lty = 2, lwd=2)
+
+#LOD and CI95
+LOD = tabl[series]
+u.LOD = tablu[series]
+abline(v = LOD,
+       col = 2,
+       lwd = 2,
+       lty = 3)
+Ld = predict(
+ regl[[series]],
+  newdata = data.frame(x = LOD)
+)
+abline(h=Ld, col=2, lty=2, lwd=2)
+mtext('Ld', side = 2, at = Ld, col = 2)
+segments(
+  LOD-2*u.LOD,0,
+  LOD+2*u.LOD,0,
+  col = 2,
+  lwd = 8, lend=0)
+mtext('LOD',1,at=LOD,col=2)
+
+# Gaussian repres.
+xg = seq(0,0.2,length.out=1000)
+g1 = dnorm(xg,p[1,1],Sxy/qnorm(0.95))
+g1 = g1/max(g1)
+lines(g1,xg, col = 4)
+sel = which(xg >= Lc)
+polygon(
+  c(0,g1[sel],0),
+  c(Lc,xg[sel],Lc),
+  border = 4,
+  col = 4)
+text(0.3+g1[sel][1],Lc,'5%',col=4)
+
+g2 = dnorm(xg,Ld,Sxy/qnorm(0.95))
+g2 = g2/max(g2)
+lines(LOD+g2,xg,col=2)
+sel = which(xg <= Lc)
+polygon(
+  c(LOD,LOD+g2[sel],LOD),
+  c(Lc,xg[sel],Lc),
+  border = 2,
+  col = 2)
+text(0.6+LOD+g2[sel][1],Lc,'5%',col=2)
+box()
+
+# LOQ
+slope = coef(regl[[series]])[2]
+LC = Sxy / slope
+abline(v=LC, col=3, lwd=2, lty=2)
+mtext('LC', side = 1, at = LC, col = 3)
+LOQ = 3.04 * LC
+abline(v=LOQ, col=6, lwd=2, lty=2)
+mtext('LOQ', side = 1, at = LOQ, col = 6)
+
+```
+
