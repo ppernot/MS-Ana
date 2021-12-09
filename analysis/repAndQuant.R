@@ -27,9 +27,8 @@ source('functions.R')
 # taskTable = 'list_of_files_AA_2.csv'
 # quantTable = 'listaacom_quantification.csv'
 dataRepo  = "../data/TestQuant/"
-tabRepo   = dataRepo
 
-taskTable  = 'Files_OA_Gamme4_20210428.csv'
+taskTable  = 'Files_quanti_Gamme4.csv'
 quantTable = 'targets_OA1_quantification.csv'
 
 fit_dim = 2
@@ -41,6 +40,8 @@ const_fwhm = 0.7
 area_min   = 10
 
 makePlots = TRUE
+
+serialize = TRUE # Serialize data on a day-by-day basis
 
 # Check sanity of parameters ####
 assertive::assert_all_are_existing_files(dataRepo)
@@ -57,20 +58,26 @@ assertive::assert_all_are_existing_files(file)
 Tasks = readTasksFile(paste0(dataRepo, taskTable))
 D     = gatherResults(Tasks, tabRepo, userTag)
 
+# Data structure
+if (serialize) {
+  dayTags = sapply(Tasks[,"DMS_file"],getDayTag)
+  names(dayTags)=NULL
+}
+
 # Add results columns
 D = cbind(
   D,
   ratio = NA, CV_ratio = NA, u_ratio = NA,
-  LOD = NA, CV_LOD = NA, u_LOD = NA, LOD1 = NA,
-  LOQ = NA, CV_LOQ = NA, u_LOQ = NA,
-  slope0 = NA, CV_slope0 = NA, u_slope0 = NA,
-  slope = NA, CV_slope = NA, u_slope = NA,
-  intercept = NA, CV_intercept = NA, u_intercept = NA,
-  R2 = NA, R20 = NA
+  LOD = NA, CV_LOD = NA, u_LOD = NA,
+  LOQ = NA, CV_LOQ = NA, u_LOQ = NA
+  # slope0 = NA, CV_slope0 = NA, u_slope0 = NA,
+  # slope = NA, CV_slope = NA, u_slope = NA,
+  # intercept = NA, CV_intercept = NA, u_intercept = NA,
+  # R2 = NA, R20 = NA
 )
 
 # Get targets ####
-quant = readTargetsFile(paste0(dataRepo, quantTable))
+quant   = readTargetsFile(paste0(dataRepo, quantTable))
 targets = quant$Name
 
 # Manage graph labels according to fit_dim
@@ -126,196 +133,198 @@ for(it in 1:length(targets)) {
   D[selAA,'u_ratio']  = f[,'uy']
   D[selAA,'CV_ratio'] = signif(100 * abs(dratio/ratio),2)
 
-  # Linear regressions
+  # LOD / LOQ ####
 
-  io   = order(cAA)
-  xo   = cAA[io]
-  yo   = ratio[io]
-  uyo  = dratio[io]
-  # wo   = 1/uyo^2
-  # wo = wo / sum(wo)
-  # reg  = lm(yo ~ xo, weights = wo)
-  # reg0 = lm(yo ~ 0 + xo, weights = wo)
-  # Ignore weights
-  reg  = lm(yo ~ xo)
-  reg0 = lm(yo ~ 0 + xo)
+  Data    = data.frame(x = cAA, y = ratio, t = dayTags )
+  res     = lodCal(Data, serialize)
 
-  slope0 = coefficients(reg0)[1]
-  uSlope0 = sqrt(diag(vcov(reg0)))
-  f = formatUncVec(slope0,uSlope0)
-  D[selAA,'slope0']    = f[,'y']
-  D[selAA,'u_slope0']  = f[,'uy']
-  D[selAA,'CV_slope0'] = signif(100 * abs(uSlope0 / slope0), 2)
+  tabRes  = cbind(AA,res$tab)
+  colnames(tabRes) = c('AA',colnames(res$tab))
+  file = paste0(
+    tabRepo,
+    dataTag,
+    ifelse(userTag == '', '', '_'),
+    userTag,
+    '_LOD.csv'
+  )
+  write.table(
+    tabRes,
+    file = file,
+    row.names = FALSE,
+    sep = ',',
+    col.names = it==1,
+    append = TRUE
+  )
 
-  intercept  = coefficients(reg)[1]
-  slope      = coefficients(reg)[2]
-  uCoefs     = sqrt(diag(vcov(reg)))
-  uIntercept = uCoefs[1]
-  uSlope     = uCoefs[2]
-
-  f = formatUncVec(slope,uSlope)
-  D[selAA,'slope']    = f[,'y']
-  D[selAA,'u_slope']  = f[,'uy']
-  D[selAA,'CV_slope'] = signif(100 * abs(uSlope / slope),2)
-
-  f = formatUncVec(intercept,uIntercept)
-  D[selAA,'intercept']    = f[,'y']
-  D[selAA,'u_intercept']  = f[,'uy']
-  D[selAA,'CV_intercept'] = signif(100 * abs(uCoefs[1] / intercept),2)
-
-  Sxy  = summary(reg)$sigma #Standard deviation of residuals
-  lod  = 3 * Sxy / slope
-  uLod = 3 * Sxy / slope^2 * uSlope
-  f = formatUncVec(lod,uLod)
+  f = formatUncVec(res$LOD,res$LOD.u)
   D[selAA, 'LOD']    = f[,'y']
   D[selAA, 'u_LOD']  = f[,'uy']
-  D[selAA, 'CV_LOD'] = D[selAA, 'CV_slope']
+  D[selAA, 'CV_LOD'] = signif(100 * abs(res$LOD.u / res$LOD),2)
 
-  # LOD estimated by chemCal with IUPAC method (no uncertainty)
-  D[selAA, 'LOD1']   = signif(chemCal::lod(reg)$x,5)
-
-  loq  = 10 * Sxy / slope
-  uLoq = 10 * Sxy / slope^2 * uSlope
-  f = formatUncVec(loq,uLoq)
+  f = formatUncVec(res$LOQ,res$LOQ.u)
   D[selAA, 'LOQ']    = f[,'y']
   D[selAA, 'u_LOQ']  = f[,'uy']
-  D[selAA, 'CV_LOQ'] = D[selAA, 'CV_slope']
-
-  D[selAA, 'R2' ] = signif(summary(reg)$r.squared,2)
-  D[selAA, 'R20'] = signif(summary(reg0)$r.squared,2)
+  D[selAA, 'CV_LOQ'] = signif(100 * abs(res$LOQ.u / res$LOQ),2)
 
   if(makePlots) {
-    #Data
-    plot(
-      xo, yo,
-      pch = 16,
-      col = cols[5],
-      xlab = 'cAA', xlim = c(0,max(xo)),
-      ylab = 'aire_AA / aire_IS', ylim = c(0,max(ratio)),
-      main = paste(AA,'/',IS)
-    )
-    grid(col='gray80'); abline(v=0)
-    segments(xo, yo - 2 * uyo,
-             xo, yo + 2 * uyo,
-             col = cols[5])
+    for(iS in seq_along(res$series)) {
+      tag = res$series[iS]
 
-    # Fits
-    p = predict(reg,
-                interval = 'pred',
-                level = 0.99)
-    matlines(xo, p,
-             col = cols[4],
-             lty=c(1,2,2))
+      x = res$fit[[tag]]$model$x
+      y = res$fit[[tag]]$model$y
 
-    # p0 = predict(reg0,
-    #              newdata = list(xo = x1),
-    #              interval = 'pred', level = 0.99)
-    # matlines(x1[!is.na(p0[,1])],p0,
-    #          col = cols[2],
-    #          lty=c(1,2,2))
+      if (iS == 1) {
+        plot(
+          x,
+          y,
+          type = 'p',
+          pch = 16,
+          col = 4,
+          xlab = 'cAA',
+          xlim = c(0, max(cAA)),
+          ylab = 'aire_AA / aire_IS',
+          ylim = c(0, max(ratio)),
+          # xaxs = 'i',
+          yaxs = 'i',
+          main = AA
+        )
+        grid()
+        abline(v = 0, h = 0)
+      } else {
+        points(x, y, pch = 16, col = 4)
+      }
+      abline(res$fit[[tag]], lty = 1, col = 'gray50')
+      abline(v = res$tab[, 'LOD'], lty = 2, col = 2)
+      abline(
+        v = res$LOD,
+        lty = 1,
+        col = 2,
+        lwd = 1.5
+      )
+      segments(
+        res$LOD - 1.96 * res$LOD.u,
+        0,
+        res$LOD + 1.96 * res$LOD.u,
+        0,
+        col = 2,
+        lwd = 4,
+        lend = 2
+      )
+      segments(
+        res$LOD - 1.96 * res$LOD.u,
+        max(ratio),
+        res$LOD + 1.96 * res$LOD.u,
+        max(ratio),
+        col = 2,
+        lwd = 4,
+        lend = 2
+      )
+      mtext('LOD', side = 3, at = res$LOD, col = 2, cex = 0.5)
+      mtext(signif(res$LOD,3), side = 1, at = res$LOD, col = 2, cex = 0.5)
 
-    # LOD
-    Clod = D[selAA, 'LOD']
-    abline(v=Clod , col=cols[3], lty = 3)
-    mtext('LOD',side=3,col=cols[3],at=Clod, cex=0.75)
-    mtext(Clod, side=1,col=cols[3],at=Clod, cex=0.75)
-
-    #Check with 99% CI
-    abline(h=p[1,3], lty = 3, col = cols[3])
-
-    # LOD1
-    Clod = D[selAA, 'LOD1']
-    if(all(!is.na(Clod))) {
-      abline(v=Clod , col=cols[6], lty = 3)
-      mtext('LOD1',side=3,col=cols[6],at=Clod, cex=0.75)
+      # abline(
+      #   v = res$LOQ,
+      #   lty = 1,
+      #   col = 3,
+      #   lwd = 1
+      # )
+      # segments(
+      #   res$LOQ - 1.96 * res$LOQ.u,
+      #   0,
+      #   res$LOQ + 1.96 * res$LOQ.u,
+      #   0,
+      #   col = 3,
+      #   lwd = 4,
+      #   lend = 2
+      # )
     }
 
-    box()
   }
+
 }
 if(makePlots)
   dev.off()
 
 # Estimate means ####
 
-props = c("m/z","CV","FWHM_m/z","FWHM_CV","Area",
-          "ratio","slope0","slope","intercept","LOD","LOD1","LOQ")
-if(fit_dim == 0) {
-  sel = c(1,3,5:11)
-  props = props[sel]
-}
+# props = c("m/z","CV","FWHM_m/z","FWHM_CV","Area","ratio","LOD","LOQ")
+# if(fit_dim == 0) {
+#   sel = c(1,3,5:11)
+#   props = props[sel]
+# }
+#
+# meanResTab = D[1:length(targets),]
+# meanResTab[,] = NA
+# meanResTab[,'Name'] = targets
+# rownames(meanResTab) = targets
+# for(targ in targets) {
+#   sel = D$Name == targ
+#   if(sum(sel)==0) next
+#   for(prop in props) {
+#     x  = D[sel,prop]
+#     ux = D[sel,paste0('u_',prop)]
+#     sel2 = !is.na(x+ux)
+#     if( sum(sel2) == 0 ) next
+#     if( sum(sel2) == 1 ) {
+#       wm  = x[sel2]
+#       uwm = NA
+#     } else {
+#       W   = fwm(x[sel2],ux[sel2])
+#       wm  = W$wm
+#       uwm = W$uwm
+#     }
+#     f = formatUncVec(wm,uwm)
+#     meanResTab[targ,prop]              = f[,'y']
+#     meanResTab[targ,paste0('u_',prop)] = f[,'uy']
+#     if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
+#       meanResTab[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm),2)
+#   }
+# }
+# meanResTab[,'fit_dim'] = fit_dim
+# meanResTab[,'tag']     = 'Mean'
+#
+# # Means for IS species
+# targIS = quant$IS
+# propsIS = props[-length(props)]
+#
+# meanResTabIS = D[1:length(targIS),]
+# meanResTabIS[,] = NA
+# meanResTabIS[,'Name'] = targIS
+# rownames(meanResTabIS) = targIS
+# for(targ in targIS) {
+#   sel = D$Name == targ
+#   if(sum(sel)==0) next
+#   for(prop in propsIS) {
+#     x  = D[sel,prop]
+#     ux = D[sel,paste0('u_',prop)]
+#     sel2 = !is.na(x+ux)
+#     if( sum(sel2) == 0 ) next
+#     if( sum(sel2) == 1 ) {
+#       wm  = x[sel2]
+#       uwm = NA
+#     } else {
+#       W   = fwm(x[sel2],ux[sel2])
+#       wm  = W$wm
+#       uwm = W$uwm
+#     }
+#     f = formatUncVec(wm,uwm)
+#     meanResTab[targ,prop]              = f[,'y']
+#     meanResTab[targ,paste0('u_',prop)] = f[,'uy']
+#     if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
+#       meanResTabIS[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm), 2)
+#   }
+# }
+# meanResTabIS[,'fit_dim'] = fit_dim
+# meanResTabIS[,'tag']     = 'Mean'
 
-meanResTab = D[1:length(targets),]
-meanResTab[,] = NA
-meanResTab[,'Name'] = targets
-rownames(meanResTab) = targets
-for(targ in targets) {
-  sel = D$Name == targ
-  if(sum(sel)==0) next
-  for(prop in props) {
-    x  = D[sel,prop]
-    ux = D[sel,paste0('u_',prop)]
-    sel2 = !is.na(x+ux)
-    if( sum(sel2) == 0 ) next
-    if( sum(sel2) == 1 ) {
-      wm  = x[sel2]
-      uwm = NA
-    } else {
-      W   = fwm(x[sel2],ux[sel2])
-      wm  = W$wm
-      uwm = W$uwm
-    }
-    f = formatUncVec(wm,uwm)
-    meanResTab[targ,prop]              = f[,'y']
-    meanResTab[targ,paste0('u_',prop)] = f[,'uy']
-    if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
-      meanResTab[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm),2)
-  }
-}
-meanResTab[,'fit_dim'] = fit_dim
-meanResTab[,'tag']     = 'Mean'
 
-# Means for IS species
-targIS = quant$IS
-propsIS = props[-length(props)]
-
-meanResTabIS = D[1:length(targIS),]
-meanResTabIS[,] = NA
-meanResTabIS[,'Name'] = targIS
-rownames(meanResTabIS) = targIS
-for(targ in targIS) {
-  sel = D$Name == targ
-  if(sum(sel)==0) next
-  for(prop in propsIS) {
-    x  = D[sel,prop]
-    ux = D[sel,paste0('u_',prop)]
-    sel2 = !is.na(x+ux)
-    if( sum(sel2) == 0 ) next
-    if( sum(sel2) == 1 ) {
-      wm  = x[sel2]
-      uwm = NA
-    } else {
-      W   = fwm(x[sel2],ux[sel2])
-      wm  = W$wm
-      uwm = W$uwm
-    }
-    f = formatUncVec(wm,uwm)
-    meanResTab[targ,prop]              = f[,'y']
-    meanResTab[targ,paste0('u_',prop)] = f[,'uy']
-    if(! (prop %in% props[1:5]) & ! (prop == 'LOD1'))
-      meanResTabIS[targ,paste0('CV_',prop)] = signif(100 * abs(uwm/wm), 2)
-  }
-}
-meanResTabIS[,'fit_dim'] = fit_dim
-meanResTabIS[,'tag']     = 'Mean'
+# D = rbind(meanResTab,
+#           '',
+#           meanResTabIS,
+#           '',
+#           D)
 
 # Save all ####
-
-D = rbind(meanResTab,
-          '',
-          meanResTabIS,
-          '',
-          D)
 
 write.csv(
   D,

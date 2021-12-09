@@ -54,12 +54,13 @@ source('functions.R')
 # User configuration params -------------------------------
 #----------------------------------------------------------
 
-ms_type   = c('esquire','fticr')[2]
+ms_type   = c('esquire','fticr')[1]
+dataRepo  = "../data/TestQuant/"
 
-taskTable = 'Test3/files_quantification.csv'
-tgTable   = 'Test3/targets.csv'
+taskTable = 'Files_quanti_Gamme4.csv'
+tgTable   = 'targets_OAq.csv'
 
-fit_dim  = 0    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
+fit_dim  = 2    # 2: fit 2D peaks; 1: fit 1D CV line; 0: fit 1D m/z line
 
 filter_results = TRUE
 area_min       = 10

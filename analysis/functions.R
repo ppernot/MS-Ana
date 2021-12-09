@@ -214,17 +214,19 @@ bslCorMS = function(MS, baseline_cor = 'median') {
 
   return(MS)
 }
-makeTag <- function(CVTable, msTable, userTag) {
-  date =
+getDayTag = function(tab) {
+  # Scrap date from dims file name
+  strsplit(
     strsplit(
-      strsplit(
-        CVTable,
-        split = ' '
-      )[[1]][2],
-      split = '-'
-    )[[1]][1]
-
-  tag = paste0(
+      tab,
+      split = ' '
+    )[[1]][2],
+    split = '-'
+  )[[1]][1]
+}
+makeTag <- function(CVTable, msTable, userTag) {
+  date = getDayTag(CVTable)
+  paste0(
     date,'_',
     strsplit(msTable, split='\\.')[[1]][1],
     ifelse(userTag=='','','_'),userTag
@@ -2008,4 +2010,196 @@ formatUncVec = function(y, uy, numDig = 2) {
   }
   return(ftab)
 }
+cv = function(x, ux) {
+  if(x==0)
+    return(NA)
+  else
+    return(100 * abs(ux / x))
+}
+lodCal = function(
+  D,
+  serialize = TRUE,
+  weighted_mean = TRUE,
+  checkDin = FALSE
+) {
+
+  xall    = D$x
+  yall    = D$y
+
+  fitList = list()
+
+  if(serialize) {
+    dayTags = D$t
+    series  = unique(dayTags)
+
+    # Treat data per day
+    tabLod = tabLodu = tabLoq  = tabLoqu  = c()
+    tabInt = tabSlop = tabIntu = tabSlopu = tabR2 = c()
+
+    for(iS in seq_along(series)) {
+
+      # Select data of the day
+      sel = dayTags == series[iS]
+      xd  = xall[sel]
+      yd  = yall[sel]
+
+      # Average over daily repeats
+      yx = split(yd,xd)
+      x  = unique(xd)
+      y  = sapply(yx, mean)
+
+      # Linear fit
+      reg = lm(y ~ x)
+      fitList[[series[iS]]] = reg
+      linePars     = summary(reg)$coefficients[, 1]
+      ulinePars    = summary(reg)$coefficients[, 2]
+      tabR2[iS]    = summary(reg)$r.squared
+      tabInt[iS]   = linePars[1]
+      tabIntu[iS]  = ulinePars[1]
+      tabSlop[iS]  = linePars[2]
+      tabSlopu[iS] = ulinePars[2]
+
+      p = predict(
+        reg,
+        newdata = data.frame(x=0), # in case x=0 is absent from data
+        interval = 'prediction',
+        level = 0.90)
+      S90 = p[1, 3] - p[1, 1]
+
+      slope  = linePars[2]
+      uSlope = ulinePars[2]
+      tabLod[iS]  = 2 * S90 / slope
+      tabLodu[iS] = 2 * S90 / slope ^ 2 * uSlope
+      tabLoq[iS]  = 3.04 * S90 / slope
+      tabLoqu[iS] = 3.04 * S90 / slope ^ 2 * uSlope
+
+      if(checkDin) {
+        din = chemCal::lod(reg,method ='din')$x
+        if(abs((tabLod[iS] - din)/din) > 1e-3)
+          warning('LOD is different from reference value...')
+      }
+    }
+
+    # Average daily LODs/LOQs
+    if (weighted_mean) {
+      # Weighted mean
+      # tabw  = 1 / tabLodu ^ 2
+      # tabw  = tabw / sum(tabw)
+      # LOD   = sum(tabLod * tabw)
+      # LOD.u = sqrt(sum(tabw * (tabLod ^ 2 + tabLodu ^ 2)) - LOD ^ 2)
+      tmp    = fwm(tabLod, tabLodu)
+      LOD    = tmp$wm
+      LOD.u  = tmp$uwm
+      LOD.cv = cv(LOD,LOD.u)
+
+      # tabw  = 1 / tabLoqu ^ 2
+      # tabw  = tabw / sum(tabw)
+      # LOQ   = sum(tabLoq * tabw)
+      # LOQ.u = sqrt(sum(tabw * (tabLoq ^ 2 + tabLoqu ^ 2)) - LOQ ^ 2)
+      tmp    = fwm(tabLoq, tabLoqu)
+      LOQ    = tmp$wm
+      LOQ.u  = tmp$uwm
+      LOQ.cv = cv(LOQ,LOQ.u)
+
+    } else {
+      # Arithmetic mean
+      LOD   = mean(tabLod)
+      LOD.u = sd(tabLod) / sqrt(length(tabLod))
+      LOD.cv = cv(LOD,LOD.u)
+
+      LOQ   = mean(tabLoq)
+      LOQ.u = sd(tabLoq) / sqrt(length(tabLoq))
+      LOQ.cv = cv(LOQ,LOQ.u)
+
+    }
+
+    tmp     = fwm(tabInt,tabIntu)
+    Intm    = tmp$wm
+    Intm.u  = tmp$uwm
+    Intm.cv = cv(Intm,Intm.u)
+    tmp     = fwm(tabSlop,tabSlopu)
+    Slom    = tmp$wm
+    Slom.u  = tmp$uwm
+    Slom.cv = cv(Slom,Slom.u)
+
+    tabres = data.frame(
+      Int   = c(tabInt,Intm,Intm.u,Intm.cv),
+      Int.u = c(tabIntu,NA,NA,NA),
+      Slo   = c(tabSlop,Slom,Slom.u,Slom.cv),
+      Slo.u = c(tabSlopu,NA,NA,NA),
+      R2    = c(tabR2,NA,NA,NA),
+      LOD   = c(tabLod,LOD,LOD.u,LOD.cv),
+      LOD.u = c(tabLodu,NA,NA,NA),
+      LOQ   = c(tabLoq,LOQ,LOQ.u,LOQ.cv),
+      LOQ.u = c(tabLoqu,NA,NA,NA)
+    )
+    tabres = cbind(
+      Series = c(series,'wMean','wSE','CV'),
+      tabres)
+
+  } else {
+
+    series ='fitMean'
+
+    # Unweighted means
+    yx = split(yall,xall)
+    x  = unique(xall)
+    y  = sapply(yx, mean)
+
+    # Linear fit
+    reg = lm(y ~ x)
+    fitList[[series]] = reg
+    linePars     = summary(reg)$coefficients[, 1]
+    ulinePars    = summary(reg)$coefficients[, 2]
+    R2     =  summary(reg)$r.squared
+    Int    = linePars[1]
+    Intu   = ulinePars[1]
+    slope  = linePars[2]
+    uSlope = ulinePars[2]
+
+    p = predict(
+      reg,
+      newdata = data.frame(x=0), # in case x=0 is absent from data
+      interval = 'prediction',
+      level = 0.90)
+    S90 = p[1, 3] - p[1, 1]
+
+    LOD    = 2 * S90 / slope
+    LOD.u  = 2 * S90 / slope ^ 2 * uSlope
+    LOQ    = 3.04 * S90 / slope
+    LOQ.u  = 3.04 * S90 / slope ^ 2 * uSlope
+
+    if(checkDin) {
+      din = chemCal::lod(reg,method ='din')$x
+      if(abs((LOD - din)/din) > 1e-3)
+        warning('LOD is different from reference value...')
+    }
+    tabres = data.frame(
+      Series= series,
+      Int   = Int,
+      Int.u = Intu,
+      Slo   = slope,
+      Slo.u = uSlope,
+      R2    = R2,
+      LOD   = LOD,
+      LOD.u = LOD.u,
+      LOQ   = LOQ,
+      LOQ.u = LOQ.u
+    )
+  }
+
+  return(
+    list(
+      LOD    = LOD,
+      LOD.u  = LOD.u,
+      LOQ    = LOQ,
+      LOQ.u  = LOQ.u,
+      tab    = tabres,
+      series = series,
+      fit    = fitList
+    )
+  )
+}
+
+
 
